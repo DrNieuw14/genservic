@@ -1,115 +1,137 @@
 <?php
 session_start();
 include("config/database.php");
-
-
-if(isset($_POST['register'])){
-
-$first = $_POST['first_name'];
-$middle = $_POST['middle_initial'];
-$last = $_POST['last_name'];
-$birth = $_POST['birthdate'];
-$gender = $_POST['gender'];
-
-$username = $_POST['new_username'];
-$password = password_hash($_POST['new_password'], PASSWORD_DEFAULT);
-
-$role = $_POST['role'];
-
-$fullname = $first." ".$middle." ".$last;
-
-/* CHECK IF USERNAME EXISTS */
-
-$check = mysqli_query($conn,"SELECT * FROM users WHERE username='$username'");
-
-if(mysqli_num_rows($check) > 0){
-
-echo "<p style='color:red'>Username already exists</p>";
-
-}else{
-
-$query = "INSERT INTO users(first_name,middle_initial,last_name,birthdate,gender,fullname,username,password,role)
-VALUES('$first','$middle','$last','$birth','$gender','$fullname','$username','$password','$role')";
-
-mysqli_query($conn,$query);
-
-echo "<p style='color:green'>Account Created Successfully</p>";
-
+if (isset($_SESSION['user'])) {
+    header("Location: dashboard.php");
+    exit();
 }
 
-}
+$errorMessage = "";
+$usernameValue = "";
 
-if(isset($_POST['login'])){
+if (isset($_POST['login'])) {
+    $usernameValue = trim($_POST['username'] ?? '');
+    $password = $_POST['password'] ?? '';
 
-$username = $_POST['username'];
-$password = $_POST['password'];
+    if ($usernameValue === '' || $password === '') {
+        $errorMessage = "Please enter both username and password.";
+    } else {
+        $stmt = $conn->prepare("SELECT id, username, password, role FROM users WHERE username = ? LIMIT 1");
 
-$stmt = $conn->prepare("SELECT * FROM users WHERE username=?");
-$stmt->bind_param("s", $username);
-$stmt->execute();
+        if ($stmt) {
+            $stmt->bind_param("s", $usernameValue);
+            $stmt->execute();
+            $result = $stmt->get_result();
 
-$result = $stmt->get_result();
+            if ($result && $result->num_rows === 1) {
+                $user = $result->fetch_assoc();
 
-if($result->num_rows > 0){
+                if (password_verify($password, $user['password'])) {
+                    session_regenerate_id(true);
+                    $_SESSION['user'] = $user['username'];
+                    $_SESSION['role'] = $user['role'];
+                    $_SESSION['user_id'] = $user['id'];
 
-$user = $result->fetch_assoc();
+                    header("Location: dashboard.php");
+                    exit();
+                }
+            }
 
-if(password_verify($password, $user['password'])){
-
-$_SESSION['user'] = $username;
-$_SESSION['role'] = $user['role'];
-
-session_regenerate_id(true);
-
-header("Location: dashboard.php");
-exit();
-
-}
-else{
-
-echo "Invalid password";
-
-}
-
-}else{
-
-echo "User not found";
-
-}
-
+            $errorMessage = "Invalid username or password.";
+            $stmt->close();
+        } else {
+            $errorMessage = "A server error occurred. Please try again.";
+        }
+    }
 }
 ?>
-
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-<title>GENSERVIS Login</title>
+     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GENSERVIC Login</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0d6efd, #6610f2);
+        }
+
+        .login-card {
+            max-width: 420px;
+            width: 100%;
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        }
+    </style>
 </head>
+<body class="d-flex align-items-center justify-content-center p-3">
+    <div class="card login-card">
+        <div class="card-body p-4 p-md-5">
+            <h2 class="text-center mb-4">GENSERVIC Login</h2>
 
-<body>
+            <?php if ($errorMessage !== ""): ?>
+                <div class="alert alert-danger" role="alert">
+                    <?= htmlspecialchars($errorMessage, ENT_QUOTES, 'UTF-8'); ?>
+                </div>
+            <?php endif; ?>
 
-<h2>GENSERVIS Login</h2>
+            <form method="POST" novalidate>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username</label>
+                    <input
+                        type="text"
+                        class="form-control"
+                        id="username"
+                        name="username"
+                        value="<?= htmlspecialchars($usernameValue, ENT_QUOTES, 'UTF-8'); ?>"
+                        required
+                        minlength="3"
+                        maxlength="50"
+                    >
+                    <div class="form-text">Username must be 3-50 characters.</div>
+                </div>
 
-<form method="POST">
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <div class="input-group">
+                        <input
+                            type="password"
+                            class="form-control"
+                            id="password"
+                            name="password"
+                            required
+                            minlength="6"
+                        >
+                        <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                            Show Password
+                        </button>
+                    </div>
+                </div>
 
-<label>Username</label><br>
-<input type="text" name="username"><br><br>
+                <div class="d-grid gap-2">
+                    <button type="submit" name="login" class="btn btn-primary btn-lg">Login</button>
+                </div>
+            </form>
 
-<label>Password</label><br>
-<input type="password" name="password"><br><br>
+            <p class="text-center mt-4 mb-0">
+                Don't have an account?
+                <a href="create_account.php">Create Account</a>
+            </p>
+        </div>
+    </div>
 
-<button type="submit" name="login">Login</button>
+    <script>
+        const togglePasswordBtn = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('password');
 
-<p>
-<a href="create_account.php">Create Account</a>
-</p>
-
-
-
-
-
-</form>
-
+        togglePasswordBtn.addEventListener('click', function () {
+            const isPassword = passwordInput.getAttribute('type') === 'password';
+            passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+            togglePasswordBtn.textContent = isPassword ? 'Hide Password' : 'Show Password';
+        });
+    </script>
 </body>
 </html>
