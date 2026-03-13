@@ -31,3 +31,22 @@ It allows users to submit documents for verification and enables administrators 
 2. Copy the project to `xampp/htdocs`
 3. Import the database into phpMyAdmin
 4. Run the system using:
+
+## GitHub Remote Setup
+To connect this local repository to GitHub, run:
+
+```bash
+git remote add origin https://github.com/DrNieuw14/genservic.git
+```
+
+If `origin` already exists, update it instead:
+
+```bash
+git remote set-url origin https://github.com/DrNieuw14/genservic.git
+```
+
+Then verify:
+
+```bash
+git remote -v
+```
