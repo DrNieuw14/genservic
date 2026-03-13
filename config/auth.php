@@ -7,13 +7,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+require_once __DIR__ . '/url.php';
+
 /**
  * Force users to log in before loading private pages.
  */
 function require_login(): void
 {
     if (!isset($_SESSION['user_id'])) {
-        header('Location: /login.php');
+        header('Location: ' . app_url('login.php'));
         exit();
     }
 }
