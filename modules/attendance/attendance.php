@@ -68,13 +68,34 @@ $user_id = $_POST['user_id'];
 $date = date("Y-m-d");
 $time = date("H:i:s");
 
-$query = "INSERT INTO attendance(user_id,date,time_in) VALUES('$user_id','$date','$time')";
+/* Check if already timed in today */
+$check = mysqli_query($conn,"SELECT * FROM attendance 
+WHERE user_id='$user_id' AND date='$date'");
+
+if(mysqli_num_rows($check) == 0){
+
+$status = "Present";
+
+/* Late detection */
+if($time > "08:00:00"){
+$status = "Late";
+}
+
+$query = "INSERT INTO attendance(user_id,date,time_in,status)
+VALUES('$user_id','$date','$time','$status')";
 
 mysqli_query($conn,$query);
 
 echo "<p class='text-success'>Time In recorded.</p>";
 
+}else{
+
+echo "<p class='text-warning'>You already timed in today.</p>";
+
 }
+
+}
+
 
 if(isset($_POST['timeout'])){
 
@@ -82,11 +103,25 @@ $user_id = $_POST['user_id'];
 $date = date("Y-m-d");
 $time = date("H:i:s");
 
-$query = "UPDATE attendance SET time_out='$time' WHERE user_id='$user_id' AND date='$date'";
+/* Check if time in exists */
+$check = mysqli_query($conn,"SELECT * FROM attendance 
+WHERE user_id='$user_id' AND date='$date'");
+
+if(mysqli_num_rows($check) > 0){
+
+$query = "UPDATE attendance 
+SET time_out='$time' 
+WHERE user_id='$user_id' AND date='$date'";
 
 mysqli_query($conn,$query);
 
 echo "<p class='text-danger'>Time Out recorded.</p>";
+
+}else{
+
+echo "<p class='text-warning'>Please Time In first.</p>";
+
+}
 
 }
 

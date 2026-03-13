@@ -51,6 +51,8 @@ $result = mysqli_query($conn,$query);
 <th>ID</th>
 <th>Personnel</th>
 <th>Date</th>
+<th>Time In</th>
+<th>Time Out</th>
 <th>Status</th>
 </tr>
 
@@ -64,7 +66,20 @@ echo "<td>".$row['id']."</td>";
 echo "<td>".$row['fullname']."</td>";
 echo "<td>".$row['date']."</td>";
 
+echo "<td>".$row['time_in']."</td>";
+echo "<td>".$row['time_out']."</td>";
+
+$status = $row['status'];
+
+if($status == "Present"){
 echo "<td><span class='badge bg-success'>Present</span></td>";
+}
+elseif($status == "Late"){
+echo "<td><span class='badge bg-warning text-dark'>Late</span></td>";
+}
+else{
+echo "<td><span class='badge bg-danger'>Absent</span></td>";
+}
 
 echo "</tr>";
 
