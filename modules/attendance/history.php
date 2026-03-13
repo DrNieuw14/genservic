@@ -1,95 +1,111 @@
 <?php
-session_start();
-include("../../config/database.php");
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../config/layout.php';
 
-if(!isset($_SESSION['user'])){
-header("Location: ../../login.php");
-exit();
-}
-?>
+require_role(['admin', 'supervisor', 'personnel']);
 
-<?php
+$dateFilter = clean_input($_GET['date'] ?? '');
+$nameSearch = clean_input($_GET['search'] ?? '');
 
-if($_SESSION['role'] == 'personnel'){
+$sql = "
+SELECT a.id, p.fullname, a.date, a.time_in, a.time_out, a.status
+FROM attendance a
+JOIN personnel p ON p.id = a.user_id
+WHERE 1 = 1
+";
+$params = [];
+$types = '';
 
-$query = "SELECT attendance.*, personnel.fullname
-FROM attendance
-JOIN personnel ON attendance.user_id = personnel.id
-ORDER BY date DESC";
-
-}else{
-
-$query = "SELECT attendance.*, personnel.fullname
-FROM attendance
-JOIN personnel ON attendance.user_id = personnel.id
-ORDER BY date DESC";
-
+if ($dateFilter !== '') {
+    $sql .= ' AND a.date = ?';
+    $params[] = $dateFilter;
+    $types .= 's';
 }
 
-$result = mysqli_query($conn,$query);
+if ($nameSearch !== '') {
+    $sql .= ' AND p.fullname LIKE ?';
+    $params[] = '%' . $nameSearch . '%';
+    $types .= 's';
+}
 
+$sql .= ' ORDER BY a.date DESC, p.fullname ASC LIMIT 500';
+$stmt = $conn->prepare($sql);
+if ($types !== '') {
+    $stmt->bind_param($types, ...$params);
+}
+$stmt->execute();
+$result = $stmt->get_result();
 ?>
-
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-
-<title>Attendance History</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance History | GenServis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/assets/css/app.css">
 </head>
+<body>
+<div class="container-fluid app-layout">
+    <div class="row">
+        <?php render_sidebar($_SESSION['role']); ?>
+        <main class="col-lg-10 col-md-9 p-4">
+            <h3 class="mb-3">Attendance History</h3>
 
-<body class="container mt-4">
+            <form method="get" class="row g-2 mb-3">
+                <div class="col-md-3">
+                    <label class="form-label">Date</label>
+                    <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($dateFilter, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Personnel Name</label>
+                    <input type="text" name="search" class="form-control" placeholder="Search by name" value="<?= htmlspecialchars($nameSearch, ENT_QUOTES, 'UTF-8'); ?>">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" type="submit">Filter</button>
+                </div>
+            </form>
 
-<h2>Attendance History</h2>
-
-<table class="table table-bordered">
-
-<tr>
-<th>ID</th>
-<th>Personnel</th>
-<th>Date</th>
-<th>Time In</th>
-<th>Time Out</th>
-<th>Status</th>
-</tr>
-
-<?php
-
-while($row = mysqli_fetch_assoc($result)){
-
-echo "<tr>";
-
-echo "<td>".$row['id']."</td>";
-echo "<td>".$row['fullname']."</td>";
-echo "<td>".$row['date']."</td>";
-
-echo "<td>".$row['time_in']."</td>";
-echo "<td>".$row['time_out']."</td>";
-
-$status = $row['status'];
-
-if($status == "Present"){
-echo "<td><span class='badge bg-success'>Present</span></td>";
-}
-elseif($status == "Late"){
-echo "<td><span class='badge bg-warning text-dark'>Late</span></td>";
-}
-else{
-echo "<td><span class='badge bg-danger'>Absent</span></td>";
-}
-
-echo "</tr>";
-
-}
-
-?>
-
-</table>
-
-<a href="../../dashboard.php" class="btn btn-secondary">Back to Dashboard</a>
-
+            <div class="table-responsive card border-0 shadow-sm">
+                <table class="table table-striped table-hover mb-0">
+                    <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Personnel</th>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php while ($row = $result->fetch_assoc()): ?>
+                        <tr>
+                            <td><?= (int) $row['id']; ?></td>
+                            <td><?= htmlspecialchars($row['fullname'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?= htmlspecialchars($row['date'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?= htmlspecialchars($row['time_in'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?= htmlspecialchars($row['time_out'] ?? '-', ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td>
+                                <?php $status = $row['status']; ?>
+                                <span class="badge <?= $status === 'Present' ? 'bg-success' : ($status === 'Late' ? 'bg-warning text-dark' : 'bg-danger'); ?>">
+                                    <?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
+                                </span>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+</div>
+<script src="/assets/js/app.js"></script>
 </body>
 </html>
+
+<?php
+
+header('Location: /attendance/history.php');
+exit();

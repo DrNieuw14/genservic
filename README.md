@@ -1,52 +1,28 @@
-# GENSERVIC
-General Services Document Screening System
+# GENSERVIC Personnel Attendance System
 
-## Description
-GENSERVIC is a web-based document screening system developed using PHP and MySQL.  
-It allows users to submit documents for verification and enables administrators to screen, manage, and generate reports for submitted documents.
+## Overview
+GENSERVIC is a PHP + MySQL attendance management system with role-based access, dashboard analytics, and downloadable reports.
 
-## Features
-- User Registration and Login
-- Secure Password Hashing
-- Dashboard Monitoring
-- Document Screening
-- Report Generation
-- User Session Management
+## Updated Features
+- Bootstrap 5 responsive dashboard with attendance summary cards.
+- Attendance workflow with automatic `Present/Late` status, Time In/Time Out, and duplicate Time In prevention.
+- Attendance history with date filter and personnel-name search.
+- Prepared statements and input sanitation on key attendance and report pages.
+- Session authentication middleware for protected pages.
+- Report exports for PDF and Excel formats.
+- Query performance support via recommended DB indexes (`config/performance_indexes.sql`).
 
-## System Structure
-/config
-/modules
-/reports
+## Folder Organization
+- `/admin` - Admin pages (dashboard)
+- `/personnel` - Personnel-facing route entry
+- `/attendance` - Attendance module pages
+- `/config` - DB/auth/layout configuration
+- `/assets` - Shared CSS/JS assets
+- `/reports` - Attendance report pages and downloads
 
-## Technologies Used
-- PHP
-- MySQL
-- HTML
-- CSS
-- XAMPP
-- GitHub
-
-## Installation
-1. Clone the repository
-2. Copy the project to `xampp/htdocs`
-3. Import the database into phpMyAdmin
-4. Run the system using:
-
-## GitHub Remote Setup
-To connect this local repository to GitHub, run:
-
-```bash
-git remote add origin https://github.com/DrNieuw14/genservic.git
-```
-
-If `origin` already exists, update it instead:
-
-```bash
-git remote set-url origin https://github.com/DrNieuw14/genservic.git
-```
-
-Then verify:
-
-```bash
-git remote -v
-```
+## Setup
+1. Clone repository.
+2. Import your MySQL schema/data.
+3. Update DB credentials in `config/database.php`.
+4. (Optional but recommended) run indexes in `config/performance_indexes.sql`.
+5. Serve project with Apache or PHP built-in server.

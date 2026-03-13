@@ -1,4 +1,6 @@
 <?php
+require __DIR__ . '/../modules/personnel/personnel.php';
+<?php
 include("../../config/database.php");
 ?>
 
