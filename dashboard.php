@@ -24,20 +24,25 @@ $presentToday = (int) ($summary['present_today'] ?? 0);
 $lateToday = (int) ($summary['late_today'] ?? 0);
 $absentToday = max(0, $totalPersonnel - $presentToday);
 
-$trendSql = "
-SELECT a.date, COUNT(*) AS total_present
-FROM attendance a
-WHERE a.date >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-GROUP BY a.date
-ORDER BY a.date ASC
-";
-$trendResult = $conn->query($trendSql);
 $trendDates = [];
 $trendTotals = [];
-while ($row = $trendResult->fetch_assoc()) {
-    $trendDates[] = $row['date'];
-    $trendTotals[] = (int) $row['total_present'];
+
+for ($i = 6; $i >= 0; $i--) {
+
+    $date = date('Y-m-d', strtotime("-$i days"));
+    $trendDates[] = $date;
+
+    $sql = "SELECT COUNT(*) as total FROM attendance WHERE date = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $date);
+    $stmt->execute();
+
+    $result = $stmt->get_result()->fetch_assoc();
+    $trendTotals[] = (int)$result['total'];
+
+    $stmt->close();
 }
+
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,10 +125,18 @@ new Chart(document.getElementById('trendChart'), {
             fill: true
         }]
     },
-    options: { responsive: true }
+    options: {
+    responsive: true,
+    scales: {
+        y: {
+            beginAtZero: true,
+            ticks: {
+                precision: 0
+            }
+        }
+    }
+}
 });
 </script>
 </body>
 </html>
-
-require __DIR__ . '/admin/dashboard.php';

@@ -19,15 +19,20 @@ while ($row = $personnelResult->fetch_assoc()) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
     $action = clean_input($_POST['action'] ?? '');
+
     $userId = $isPersonnel
-    ? (int) $_SESSION['personnel_id']
-    : (int) ($_POST['user_id'] ?? 0);
+        ? (int) $_SESSION['personnel_id']
+        : (int) ($_POST['user_id'] ?? 0);
 
     if ($userId <= 0) {
+
         $feedback = ['type' => 'danger', 'message' => 'Please select personnel.'];
+
     } elseif ($action === 'time_in') {
-$checkSql = 'SELECT id FROM attendance WHERE personnel_id = ? AND date = ? LIMIT 1';
+
+        $checkSql = 'SELECT id FROM attendance WHERE personnel_id = ? AND date = ? LIMIT 1';
         $checkStmt = $conn->prepare($checkSql);
         $checkStmt->bind_param('is', $userId, $today);
         $checkStmt->execute();
@@ -35,30 +40,59 @@ $checkSql = 'SELECT id FROM attendance WHERE personnel_id = ? AND date = ? LIMIT
         $checkStmt->close();
 
         if ($exists) {
+
             $feedback = ['type' => 'warning', 'message' => 'Duplicate Time In is not allowed.'];
+
         } else {
+
             $status = ($currentTime > '08:00:00') ? 'Late' : 'Present';
-            $insertSql = 'INSERT INTO attendance (personnel_id, date, time_in, status) VALUES (?, ?, ?, ?)';
+
+            $insertSql = 'INSERT INTO attendance (personnel_id, date, time_in, status)
+                          VALUES (?, ?, ?, ?)';
+
             $insertStmt = $conn->prepare($insertSql);
             $insertStmt->bind_param('isss', $userId, $today, $currentTime, $status);
             $insertStmt->execute();
             $insertStmt->close();
+
             $feedback = ['type' => 'success', 'message' => "Time In recorded with status: {$status}."];
+
         }
+
     } elseif ($action === 'time_out') {
-        $updateSql = 'UPDATE attendance SET time_out = ? WHERE personnel_id = ? AND date = ? AND time_out IS NULL';
+
+        $endTime = '17:00:00';
+
+        $undertime = null;
+
+        if ($currentTime < $endTime) {
+            $seconds = strtotime($endTime) - strtotime($currentTime);
+            $undertime = gmdate("H:i:s", $seconds);
+        }
+
+        $updateSql = 'UPDATE attendance
+                      SET time_out = ?, undertime = ?
+                      WHERE personnel_id = ? AND date = ? AND time_out IS NULL';
+
         $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->bind_param('sis', $currentTime, $userId, $today);
+        $updateStmt->bind_param('ssis', $currentTime, $undertime, $userId, $today);
         $updateStmt->execute();
+
         $affected = $updateStmt->affected_rows;
         $updateStmt->close();
 
         if ($affected > 0) {
+
             $feedback = ['type' => 'success', 'message' => 'Time Out recorded successfully.'];
+
         } else {
+
             $feedback = ['type' => 'warning', 'message' => 'No open Time In found for today.'];
+
         }
+
     }
+
 }
 ?>
 <!DOCTYPE html>

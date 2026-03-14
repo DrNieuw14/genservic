@@ -9,7 +9,7 @@ $dateFilter = clean_input($_GET['date'] ?? '');
 $nameSearch = clean_input($_GET['search'] ?? '');
 
 $sql = "
-SELECT a.id, p.fullname, a.date, a.time_in, a.time_out, a.status
+SELECT a.id, p.fullname, a.date, a.time_in, a.time_out, a.status, a.undertime
 FROM attendance a
 JOIN personnel p ON p.id = a.personnel_id
 WHERE 1 = 1
@@ -77,6 +77,8 @@ $result = $stmt->get_result();
                         <th>Time In</th>
                         <th>Time Out</th>
                         <th>Status</th>
+                        <th>Late</th>
+                        <th>Undertime</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -92,6 +94,13 @@ $result = $stmt->get_result();
                                 <span class="badge <?= $status === 'Present' ? 'bg-success' : ($status === 'Late' ? 'bg-warning text-dark' : 'bg-danger'); ?>">
                                     <?= htmlspecialchars($status, ENT_QUOTES, 'UTF-8'); ?>
                                 </span>
+                            </td>
+                            <td>
+                            <?= ($row['status'] === 'Late') ? '<span class="badge bg-warning text-dark">Yes</span>' : '-'; ?>
+                            </td>
+
+                            <td>
+                            <?= !empty($row['undertime']) ? htmlspecialchars($row['undertime'], ENT_QUOTES, 'UTF-8') : '-'; ?>
                             </td>
                         </tr>
                     <?php endwhile; ?>
