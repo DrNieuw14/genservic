@@ -1,6 +1,7 @@
 <?php
 session_start();
 include("config/database.php");
+
 if (isset($_SESSION['user'])) {
     header("Location: dashboard.php");
     exit();
@@ -10,24 +11,38 @@ $errorMessage = "";
 $usernameValue = "";
 
 if (isset($_POST['login'])) {
+
     $usernameValue = trim($_POST['username'] ?? '');
     $password = $_POST['password'] ?? '';
 
     if ($usernameValue === '' || $password === '') {
+
         $errorMessage = "Please enter both username and password.";
+
     } else {
-        $stmt = $conn->prepare("SELECT id, username, password, role, personnel_id FROM users WHERE username = ? LIMIT 1");
+
+        $stmt = $conn->prepare("SELECT id, username, password, role, personnel_id, status FROM users WHERE username = ? LIMIT 1");
 
         if ($stmt) {
+
             $stmt->bind_param("s", $usernameValue);
             $stmt->execute();
             $result = $stmt->get_result();
 
             if ($result->num_rows === 1) {
+
                 $user = $result->fetch_assoc();
 
-                if (password_verify($password, $user['password'])) {
+                // Check if account approved
+                if ($user['status'] !== 'approved') {
+
+                    $errorMessage = "Your account is waiting for supervisor approval.";
+
+                } 
+                elseif (password_verify($password, $user['password'])) {
+
                     session_regenerate_id(true);
+
                     $_SESSION['user'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['user_id'] = $user['id'];
@@ -35,14 +50,28 @@ if (isset($_POST['login'])) {
 
                     header("Location: dashboard.php");
                     exit();
+
+                } 
+                else {
+
+                    $errorMessage = "Invalid username or password.";
+
                 }
+
+            } else {
+
+                $errorMessage = "Invalid username or password.";
+
             }
 
-            $errorMessage = "Invalid username or password.";
             $stmt->close();
+
         } else {
+
             $errorMessage = "A server error occurred. Please try again.";
+
         }
+
     }
 }
 ?>

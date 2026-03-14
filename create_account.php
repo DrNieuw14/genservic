@@ -23,12 +23,11 @@ echo "<p style='color:red'>Username already exists</p>";
 
 }else{
 
-$query = "INSERT INTO users(first_name,middle_initial,last_name,birthdate,gender,fullname,username,password,role)
-VALUES('$first','$middle','$last','$birth','$gender','$fullname','$username','$password','$role')";
-
+$query = "INSERT INTO users(first_name,middle_initial,last_name,birthdate,gender,fullname,username,password,role,status)
+VALUES('$first','$middle','$last','$birth','$gender','$fullname','$username','$password','$role','pending')";
 mysqli_query($conn,$query);
 
-echo "<p style='color:green'>Account Created Successfully</p>";
+echo "<p style='color:green'>Account created successfully. Waiting for supervisor approval.</p>";
 
 }
 
