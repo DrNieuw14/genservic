@@ -59,10 +59,22 @@ for ($i = 6; $i >= 0; $i--) {
     <div class="row">
         <?php render_sidebar($_SESSION['role']); ?>
         <main class="col-lg-10 col-md-9 p-4">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h3 class="mb-0">Dashboard Overview</h3>
-                <span class="text-muted">Today: <?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8'); ?></span>
-            </div>
+         <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">Dashboard Overview</h3>
+
+            <div class="text-end">
+                 <div>
+                    Logged in as: 
+                    <strong><?= htmlspecialchars($_SESSION['user'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                    (<?= htmlspecialchars($_SESSION['role'], ENT_QUOTES, 'UTF-8'); ?>)
+                </div>
+
+            <span class="text-muted">
+                Today: <?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8'); ?>
+            </span>
+        </div>
+    </div>
+   
 
             <div class="row g-3 mb-4">
                 <div class="col-sm-6 col-xl-3">
