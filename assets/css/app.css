@@ -1,28 +1,142 @@
+/* ===== GenServis CvSU Theme ===== */
+
 body {
-    background-color: #f5f7fb;
+    background-color: #f1f5f2;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .app-layout {
     min-height: 100vh;
 }
 
+/* ===== Sidebar ===== */
+
 .sidebar {
     min-height: 100vh;
-    background: #0d6efd;
+    background: #006633 !important;
+}
+
+.sidebar h5{
+    color:#FFC107; /* CvSU Gold */
 }
 
 .sidebar .nav-link {
-    color: rgba(255, 255, 255, 0.9);
+    color: rgba(255,255,255,0.9);
     border-radius: 0.4rem;
     margin-bottom: 0.3rem;
+    transition: all 0.2s ease;
 }
 
 .sidebar .nav-link:hover,
 .sidebar .nav-link.active {
-    background: rgba(255, 255, 255, 0.2);
+    background: #004d26; /* darker green */
     color: #fff;
 }
 
+/* ===== Dashboard Cards ===== */
+
 .summary-card .card-body {
     min-height: 120px;
+}
+
+.summary-card{
+    border-left:4px solid #006633;
+    transition: transform 0.2s ease;
+}
+
+.summary-card:hover{
+    transform: translateY(-3px);
+}
+
+/* ===== Accent Color (CvSU Gold) ===== */
+
+.accent-text{
+    color:#FFC107;
+}
+
+.accent-bg{
+    background:#FFC107;
+}
+
+/* ===== Area Tags ===== */
+
+.area-tag{
+    display:inline-flex;
+    align-items:center;
+    background:#495057;
+    color:white;
+    border-radius:20px;
+    padding:4px 10px;
+    margin:3px;
+    font-size:13px;
+}
+
+.area-tag button{
+    background:none;
+    border:none;
+    color:#FFC107;
+    font-weight:bold;
+    margin-left:6px;
+    cursor:pointer;
+}
+
+.area-tag button:hover{
+    color:#ff0000;
+}
+
+/* ===== Buttons (CvSU Theme) ===== */
+
+.btn-primary{
+    background:#006633;
+    border-color:#006633;
+}
+
+.btn-primary:hover{
+    background:#004d26;
+    border-color:#004d26;
+}
+
+/* ===== Tables ===== */
+
+.table thead{
+    background:#006633;
+    color:white;
+}
+
+/* FORCE GEN SERVIS THEME */
+
+.btn-primary{
+    background:#006633 !important;
+    border-color:#006633 !important;
+}
+
+.btn-primary:hover{
+    background:#004d26 !important;
+    border-color:#004d26 !important;
+}
+
+.bg-primary{
+    background:#006633 !important;
+}
+
+.text-primary{
+    color:#006633 !important;
+}
+
+.table-light{
+    background:#006633 !important;
+    color:white !important;
+}
+
+.summary-card{
+    border-left:5px solid #006633;
+}
+
+.summary-card h2{
+    color:#006633;
+}
+
+.table thead{
+    background:#006633;
+    color:white;
 }

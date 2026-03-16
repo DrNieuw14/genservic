@@ -5,22 +5,42 @@ require_once '../../config/layout.php';
 
 require_role(['admin','supervisor']);
 
+if(isset($_POST['remove_area'])){
+
+    $personnel_id = $_POST['personnel_id'];
+    $area_name = $_POST['remove_area'];
+
+    $stmt = $conn->prepare("
+        DELETE FROM personnel_areas 
+        WHERE personnel_id=? AND area_name=?
+    ");
+
+    $stmt->bind_param("is",$personnel_id,$area_name);
+    $stmt->execute();
+
+    header("Location: assign_area.php");
+    exit();
+}
+
 if(isset($_POST['save'])){
 
     $personnel_id = $_POST['personnel_id'];
-    $area = $_POST['assigned_area'];
+    $areas = $_POST['assigned_area'] ?? [];
+
+    foreach($areas as $area){
 
     $check = $conn->prepare("SELECT * FROM personnel_areas WHERE personnel_id=? AND area_name=?");
-$check->bind_param("is",$personnel_id,$area);
-$check->execute();
-$result_check = $check->get_result();
+    $check->bind_param("is",$personnel_id,$area);
+    $check->execute();
+    $result_check = $check->get_result();
 
-if($result_check->num_rows == 0){
+    if($result_check->num_rows == 0){
 
-    $stmt = $conn->prepare("INSERT INTO personnel_areas (personnel_id, area_name) VALUES (?, ?)");
-    $stmt->bind_param("is",$personnel_id,$area);
-    $stmt->execute();
+        $stmt = $conn->prepare("INSERT INTO personnel_areas (personnel_id, area_name) VALUES (?, ?)");
+        $stmt->bind_param("is",$personnel_id,$area);
+        $stmt->execute();
 
+    }
 }
 
     header("Location: assign_area.php");
@@ -81,8 +101,36 @@ $area_list = $conn->query("SELECT area_name FROM areas ORDER BY area_name ASC");
 <title>Assign Area | GenServis</title>
 
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
 <link rel="stylesheet" href="<?= htmlspecialchars(app_url('assets/css/app.css'), ENT_QUOTES, 'UTF-8'); ?>">
 
+<style>
+
+.area-tag{
+    display:inline-flex;
+    align-items:center;
+    background:#495057;
+    color:white;
+    border-radius:20px;
+    padding:4px 10px;
+    margin:3px;
+    font-size:13px;
+}
+
+.area-tag button{
+    background:none;
+    border:none;
+    color:#ff4d4d;
+    font-weight:bold;
+    margin-left:6px;
+    cursor:pointer;
+}
+
+.area-tag button:hover{
+    color:#ff0000;
+}
+
+</style>
 </head>
 
 <body>
@@ -159,9 +207,23 @@ if(!empty($row['assigned_area'])){
 
     $assigned_areas = explode(",", $row['assigned_area']);
 
-    foreach($assigned_areas as $area){
-        echo "<span class='badge bg-secondary me-1'>".htmlspecialchars(trim($area))."</span>";
-    }
+foreach($assigned_areas as $area){
+
+    $area = trim($area);
+
+    echo "
+    <span class='area-tag'>
+        ".htmlspecialchars($area)."
+        <button 
+            type='submit'
+            name='remove_area'
+            value='".htmlspecialchars($area)."'
+            title='Remove area'>
+            ×
+        </button>
+    </span>
+    ";
+}
 
 }else{
 
@@ -174,7 +236,7 @@ if(!empty($row['assigned_area'])){
 
 <td>
 
-<select name="assigned_area" class="form-select form-select-sm">
+<select name="assigned_area[]" class="form-select form-select-sm" multiple>
 
 <?php
 $area_list->data_seek(0);

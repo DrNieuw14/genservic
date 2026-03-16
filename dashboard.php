@@ -5,6 +5,20 @@ require_once __DIR__ . '/config/layout.php';
 
 require_login();
 
+// Total Areas
+$total_areas = $conn->query("SELECT COUNT(*) as total FROM areas")->fetch_assoc()['total'];
+
+// Total Area Assignments
+$total_assignments = $conn->query("SELECT COUNT(*) as total FROM personnel_areas")->fetch_assoc()['total'];
+
+// Attendance Today
+$today = date('Y-m-d');
+$total_attendance_today = $conn->query("
+    SELECT COUNT(*) as total 
+    FROM attendance 
+    WHERE DATE(time_in)='$today'
+")->fetch_assoc()['total'];
+
 $today = date('Y-m-d');
 
 $summarySql = "
@@ -50,8 +64,11 @@ for ($i = 6; $i >= 0; $i--) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard | GenServis</title>
+    
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
     <link rel="stylesheet" href="<?= htmlspecialchars(app_url('assets/css/app.css'), ENT_QUOTES, 'UTF-8'); ?>">
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
@@ -109,10 +126,27 @@ for ($i = 6; $i >= 0; $i--) {
                         </div>
                     </div>
                 </div>
+                                <div class="col-sm-6 col-xl-3">
+                    <div class="card summary-card border-0 shadow-sm">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Total Areas</p>
+                            <h2 class="mb-0 accent-text"><?= $total_areas; ?></h2>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card summary-card border-0 shadow-sm">
+                        <div class="card-body">
+                            <p class="text-muted mb-1">Area Assignments</p>
+                            <h2 class="mb-0 accent-text"><?= $total_assignments; ?></h2>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div class="card border-0 shadow-sm">
-                <div class="card-header bg-white">
+                <div class="card-header accent-bg text-dark">
                     Attendance Trend (Last 7 days)
                 </div>
                 <div class="card-body">
@@ -131,8 +165,8 @@ new Chart(document.getElementById('trendChart'), {
         datasets: [{
             label: 'Present Count',
             data: <?= json_encode($trendTotals); ?>,
-            borderColor: '#0d6efd',
-            backgroundColor: 'rgba(13, 110, 253, 0.2)',
+            borderColor: '#006633',
+            backgroundColor: 'rgba(0,102,51,0.2)',
             tension: 0.3,
             fill: true
         }]

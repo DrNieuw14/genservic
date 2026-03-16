@@ -82,25 +82,32 @@ if (isset($_POST['login'])) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GENSERVIC Login</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/app.css">
+    
     <style>
         body {
             min-height: 100vh;
-            background: linear-gradient(135deg, #0d6efd, #6610f2);
+            background: linear-gradient(135deg, #006633 0%, #004d26 60%, #00331a 100%);
         }
 
         .login-card {
             max-width: 420px;
             width: 100%;
             border: none;
-            border-radius: 1rem;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
         }
     </style>
+         
 </head>
-<body class="d-flex align-items-center justify-content-center p-3">
+<body class="d-flex flex-column align-items-center justify-content-center vh-100">
+    <div class="text-center text-white mb-4">
+        <h3 class="fw-bold">General Services Management System</h3>
+        <small>Cavite State University – Carmona Campus</small>
+    </div>
     <div class="card login-card">
         <div class="card-body p-4 p-md-5">
-            <h2 class="text-center mb-4">GENSERVIC Login</h2>
+            <h2 class="text-center mb-4 accent-text">GenServis Login</h2>
 
             <?php if ($errorMessage !== ""): ?>
                 <div class="alert alert-danger" role="alert">
@@ -142,13 +149,13 @@ if (isset($_POST['login'])) {
                 </div>
 
                 <div class="d-grid gap-2">
-                    <button type="submit" name="login" class="btn btn-primary btn-lg">Login</button>
+                    <button type="submit" name="login" class="btn btn-primary btn-lg w-100">Login</button>
                 </div>
             </form>
 
             <p class="text-center mt-4 mb-0">
                 Don't have an account?
-                <a href="create_account.php">Create Account</a>
+                <a href="create_account.php" class="accent-text">Create Account</a>
             </p>
         </div>
     </div>
@@ -164,4 +171,6 @@ if (isset($_POST['login'])) {
         });
     </script>
 </body>
+
+
 </html>
