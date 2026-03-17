@@ -36,6 +36,12 @@ if ($role === 'supervisor' || $role === 'admin') {
             Assign Area
             </a>
 
+       <?php if ($role === 'supervisor' || $role === 'admin'): ?>
+            <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/scheduling/schedule.php'), ENT_QUOTES, 'UTF-8'); ?>">
+            Work Scheduling
+            </a>
+        <?php endif; ?>
+
         <a class="nav-link" href="<?= htmlspecialchars(app_url('reports/attendance_report.php'), ENT_QUOTES, 'UTF-8'); ?>">Reports</a>
 
         <?php if ($role === 'admin'): ?>

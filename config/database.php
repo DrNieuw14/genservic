@@ -4,12 +4,12 @@ $host = "localhost";
 $user = "root";
 $password = "";
 $database = "genservis_db";
+$port = 3307;
 
-$conn = new mysqli("localhost", "root", "", "genservis_db", 3307);
+$conn = new mysqli($host, $user, $password, $database, $port);
 
-if(!$conn){
-die("Database connection failed");
+if($conn->connect_error){
+    die("Database connection failed: " . $conn->connect_error);
 }
-
 
 ?>
