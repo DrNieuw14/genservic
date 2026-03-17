@@ -33,6 +33,7 @@ if(isset($_GET['edit_id'])){
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
 <link rel="stylesheet" href="<?= htmlspecialchars(app_url('assets/css/app.css'), ENT_QUOTES, 'UTF-8'); ?>">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 </head>
 
 <body>
@@ -77,7 +78,7 @@ SELECT
     personnel.id, 
     users.fullname, 
     users.username,
-    GROUP_CONCAT(personnel_areas.area_name SEPARATOR ', ') AS areas
+    COALESCE(GROUP_CONCAT(personnel_areas.area_name SEPARATOR ', '), 'No Area Assigned') AS areas
 FROM personnel
 JOIN users ON personnel.user_id = users.id
 LEFT JOIN personnel_areas ON personnel.id = personnel_areas.personnel_id
@@ -89,7 +90,7 @@ $result = mysqli_query($conn,$query);
 while($row = mysqli_fetch_assoc($result)){
     echo "<option value='".$row['id']."' 
     ".($edit_mode && $edit_data['user_id']==$row['id']?'selected':'')."
-    data-area='".$row['areas']."'>"
+    data-area='".htmlspecialchars($row['areas'], ENT_QUOTES)."'>"
     .$row['fullname']." (".$row['username'].")</option>";
         
 }
@@ -101,7 +102,7 @@ while($row = mysqli_fetch_assoc($result)){
 <input type="text" id="work_area" name="work_area" class="form-control mb-3" readonly
 value="<?= $edit_mode ? $edit_data['work_area'] : '' ?>">
 
-<select name="shift" class="form-control mb-3">
+<select name="shift" id="shift_select" class="form-control mb-3">
 <option value="Morning" <?= ($edit_mode && $edit_data['shift']=='Morning')?'selected':'' ?>>Morning (6AM-3PM)</option>
 <option value="2nd Shift" <?= ($edit_mode && $edit_data['shift']=='2nd Shift')?'selected':'' ?>>2nd Shift (8AM-5PM)</option>
 <option value="3rd Shift" <?= ($edit_mode && $edit_data['shift']=='3rd Shift')?'selected':'' ?>>3rd Shift (10AM-7PM)</option>
@@ -117,23 +118,29 @@ value="<?= $edit_mode ? date('H:i', strtotime($edit_data['time_in'])) : '' ?>">
 <input type="time" name="time_out" class="form-control mb-3"
 value="<?= $edit_mode ? date('H:i', strtotime($edit_data['time_out'])) : '' ?>">
 
+<?php if($edit_mode): ?>
+<label>Schedule Date</label>
 <input type="date" name="schedule_date" class="form-control mb-2"
-value="<?= $edit_mode ? $edit_data['schedule_date'] : '' ?>">
+value="<?= $edit_data['schedule_date'] ?>">
+<?php endif; ?>
 
 <!-- ✅ ADD HERE -->
 <hr>
 
 <h5>Schedule Settings</h5>
 
+<label>Select Schedule Range</label>
+<input type="text" id="date_range" class="form-control mb-3" placeholder="Select Date Range">
 
-
-<label>Start Date</label>
-<input type="date" name="start_date" class="form-control mb-3">
-
-<label>End Date</label>
-<input type="date" name="end_date" class="form-control mb-3">
+<input type="hidden" name="start_date" id="start_date">
+<input type="hidden" name="end_date" id="end_date">
 
 <label>Rest Days</label><br>
+
+<h6 class="mt-3">Schedule Preview</h6>
+<div id="schedule_preview" class="border p-3 bg-light" style="max-height:200px; overflow:auto;">
+    <small class="text-muted">Preview will appear here...</small>
+</div>
 
 <?php
 $days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -209,7 +216,7 @@ while($row = mysqli_fetch_assoc($result)){
         echo "<td><span class='badge bg-success'>".$row['shift']."</span></td>";
     }
 
-    echo "<td>".$row['schedule_date']."</td>";
+    
     echo "<td>".$row['time_in']."</td>";
     echo "<td>".$row['time_out']."</td>";
     echo "<td>
@@ -339,7 +346,101 @@ if(isset($_POST['update_task'])){
     }
 }
 ?>
-
-
 </body>
+<script>
+document.getElementById("personnel_select").addEventListener("change", function() {
+    let selected = this.options[this.selectedIndex];
+    let area = selected.getAttribute("data-area");
+
+    let input = document.getElementById("work_area");
+
+    if(area && area !== "NULL"){
+        input.value = area;
+        input.style.color = "black";
+    } else {
+        input.value = "No Area Assigned";
+        input.style.color = "red";
+    }
+});
+
+// auto-load on page open
+window.onload = function() {
+    document.getElementById("personnel_select").dispatchEvent(new Event("change"));
+};
+</script>
+
+<script>
+function generatePreview(){
+
+    let start = document.getElementById("start_date").value;
+    let end = document.getElementById("end_date").value;
+    let shift = document.getElementById("shift_select").value;
+
+    let restDays = [];
+    document.querySelectorAll("input[name='rest_days[]']:checked")
+        .forEach(cb => restDays.push(cb.value));
+
+    let previewBox = document.getElementById("schedule_preview");
+
+    if(!start || !end){
+        previewBox.innerHTML = "<small class='text-muted'>Select dates first...</small>";
+        return;
+    }
+
+    let current = new Date(start);
+    let endDate = new Date(end);
+
+    let html = "";
+
+    while(current <= endDate){
+
+        let dateStr = current.toISOString().split('T')[0];
+        let dayName = current.toLocaleDateString('en-US', { weekday: 'long' });
+
+        if(restDays.includes(dayName)){
+            html += `<div class="text-danger">${dateStr} - REST</div>`;
+        } else {
+            html += `<div>${dateStr} - ${shift}</div>`;
+        }
+
+        current.setDate(current.getDate() + 1);
+    }
+
+    previewBox.innerHTML = html;
+}
+
+// TRIGGERS
+document.getElementById("start_date").addEventListener("change", generatePreview);
+document.getElementById("end_date").addEventListener("change", generatePreview);
+document.getElementById("shift_select").addEventListener("change", generatePreview);
+
+document.querySelectorAll("input[name='rest_days[]']").forEach(cb => {
+    cb.addEventListener("change", generatePreview);
+});
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script>
+flatpickr("#date_range", {
+    mode: "range",
+    dateFormat: "Y-m-d",
+
+    onChange: function(selectedDates) {
+        if(selectedDates.length === 2){
+
+            let start = selectedDates[0].toISOString().split('T')[0];
+            let end = selectedDates[1].toISOString().split('T')[0];
+
+            document.getElementById("start_date").value = start;
+            document.getElementById("end_date").value = end;
+
+            // trigger preview
+            generatePreview();
+        }
+    }
+});
+</script>
+
+
 </html>
