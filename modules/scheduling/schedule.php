@@ -5,7 +5,24 @@ require_once '../../config/auth.php';
 
 // restrict access
 require_role(['supervisor','admin']);
+
+$edit_mode = false;
+$edit_data = null;
+
+if(isset($_GET['edit_id'])){
+    $edit_mode = true;
+    $edit_id = $_GET['edit_id'];
+
+    $stmt = $conn->prepare("SELECT * FROM work_schedule WHERE id=?");
+    $stmt->bind_param("i", $edit_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $edit_data = $result->fetch_assoc();
+}
+
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -40,17 +57,14 @@ require_role(['supervisor','admin']);
 
 <div class="card-body">
 
-<?php if(isset($_POST['auto_generate']) && (empty($_POST['start_date']) || empty($_POST['end_date']))): ?>
-    <div class="alert alert-danger">Please select start and end date</div>
-<?php endif; ?>
+
 
 <?php if(isset($_POST['assign_task'])): ?>
+    
     <div class="alert alert-success">Work Schedule Assigned</div>
 <?php endif; ?>
 
-<?php if(isset($_POST['auto_generate']) && !empty($_POST['start_date']) && !empty($_POST['end_date'])): ?>
-    <div class="alert alert-success">Auto Schedule Generated</div>
-<?php endif; ?>
+
 
 <form method="POST">
 
@@ -73,40 +87,45 @@ GROUP BY personnel.id
 $result = mysqli_query($conn,$query);
 
 while($row = mysqli_fetch_assoc($result)){
-    echo "<option value='".$row['id']."' data-area='".$row['areas']."'>"
-        .$row['fullname']." (".$row['username'].")</option>";
+    echo "<option value='".$row['id']."' 
+    ".($edit_mode && $edit_data['user_id']==$row['id']?'selected':'')."
+    data-area='".$row['areas']."'>"
+    .$row['fullname']." (".$row['username'].")</option>";
+        
 }
 ?>
 
 </select>
 
 <label>Assigned Area</label>
-<input type="text" id="work_area" name="work_area" class="form-control mb-3" readonly>
+<input type="text" id="work_area" name="work_area" class="form-control mb-3" readonly
+value="<?= $edit_mode ? $edit_data['work_area'] : '' ?>">
 
 <select name="shift" class="form-control mb-3">
-<option value="Morning">Morning (6AM-3PM)</option>
-<option value="2nd Shift">2nd Shift (8AM-5PM)</option>
-<option value="3rd Shift">3rd Shift (9AM-6PM)</option>
+<option value="Morning" <?= ($edit_mode && $edit_data['shift']=='Morning')?'selected':'' ?>>Morning (6AM-3PM)</option>
+<option value="2nd Shift" <?= ($edit_mode && $edit_data['shift']=='2nd Shift')?'selected':'' ?>>2nd Shift (8AM-5PM)</option>
+<option value="3rd Shift" <?= ($edit_mode && $edit_data['shift']=='3rd Shift')?'selected':'' ?>>3rd Shift (10AM-7PM)</option>
+<option value="Morning Shift" <?= ($edit_mode && $edit_data['shift']=='Morning Shift')?'selected':'' ?>>Morning Shift (Custom)</option>
 </select>
 
 <!-- ✅ ADD HERE -->
 <label>Time In</label>
-<input type="time" name="time_in" class="form-control mb-3">
+<input type="time" name="time_in" class="form-control mb-3"
+value="<?= $edit_mode ? date('H:i', strtotime($edit_data['time_in'])) : '' ?>">
 
 <label>Time Out</label>
-<input type="time" name="time_out" class="form-control mb-3">
+<input type="time" name="time_out" class="form-control mb-3"
+value="<?= $edit_mode ? date('H:i', strtotime($edit_data['time_out'])) : '' ?>">
 
-<input type="date" name="schedule_date" class="form-control mb-2">
+<input type="date" name="schedule_date" class="form-control mb-2"
+value="<?= $edit_mode ? $edit_data['schedule_date'] : '' ?>">
 
 <!-- ✅ ADD HERE -->
 <hr>
 
-<h5>Auto Schedule Settings</h5>
+<h5>Schedule Settings</h5>
 
-<select name="shift_type" class="form-control mb-3">
-<option value="2">2 Shift</option>
-<option value="3">3 Shift</option>
-</select>
+
 
 <label>Start Date</label>
 <input type="date" name="start_date" class="form-control mb-3">
@@ -114,15 +133,27 @@ while($row = mysqli_fetch_assoc($result)){
 <label>End Date</label>
 <input type="date" name="end_date" class="form-control mb-3">
 
-<label>Rest Day</label>
-<select name="rest_day" class="form-control mb-3">
-<option value="Sunday">Sunday</option>
-<option value="Saturday">Saturday</option>
-</select>
+<label>Rest Days</label><br>
+
+<?php
+$days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+
+foreach($days as $day){
+    echo "<div class='form-check form-check-inline'>
+        <input class='form-check-input' type='checkbox' name='rest_days[]' value='$day'>
+        <label class='form-check-label'>$day</label>
+    </div>";
+}
+?>
 
 <!-- BUTTONS -->
-<button name="assign_task" class="btn btn-primary btn-sm me-2">Assign Task</button>
-<button name="auto_generate" class="btn btn-success btn-sm">Auto Generate</button>
+<?php if($edit_mode): ?>
+    <input type="hidden" name="id" value="<?= $edit_data['id'] ?>">
+    <button name="update_task" class="btn btn-warning btn-sm">Update Task</button>
+<?php else: ?>
+    <button name="assign_task" class="btn btn-primary btn-sm me-2">Assign Task</button>
+<?php endif; ?>
+
 
 </form>
 </div>
@@ -149,6 +180,7 @@ while($row = mysqli_fetch_assoc($result)){
 <th>Date</th>
 <th>Time In</th>
 <th>Time Out</th>
+<th>Action</th>
 </tr>
 </thead>
 
@@ -180,6 +212,9 @@ while($row = mysqli_fetch_assoc($result)){
     echo "<td>".$row['schedule_date']."</td>";
     echo "<td>".$row['time_in']."</td>";
     echo "<td>".$row['time_out']."</td>";
+    echo "<td>
+<a href='schedule.php?edit_id=".$row['id']."' class='btn btn-warning btn-sm'>Edit</a>
+</td>";
     echo "</tr>";
 }
 ?>
@@ -204,33 +239,18 @@ if(isset($_POST['assign_task'])){
     $user = $_POST['user_id'];
     $area = $_POST['work_area'];
     $shift = $_POST['shift'];
-    $date = $_POST['schedule_date'];
 
-    $time_in = $_POST['time_in'];
-    $time_out = $_POST['time_out'];
-
-    $query = "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out)
-    VALUES('$user','$area','$shift','$date','$time_in','$time_out')";
-
-    mysqli_query($conn,$query);
-
- 
-}
-
-// ✅ CONTINUE SAME PHP BLOCK
-if(isset($_POST['auto_generate'])){
-
-    $shift_type = $_POST['shift_type'];
     $start_date = $_POST['start_date'];
     $end_date = $_POST['end_date'];
-    $rest_day = $_POST['rest_day'];
+    $rest_days = $_POST['rest_days'] ?? [];
 
-    // stop if no dates
     if(empty($start_date) || empty($end_date)){
+        echo "<div class='alert alert-danger'>Please select start and end date</div>";
         return;
     }
 
-    $personnel = mysqli_query($conn, "SELECT id FROM personnel");
+    // ✅ PREPARE ONCE
+    $stmt = $conn->prepare("INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out) VALUES(?,?,?,?,?,?)");
 
     $current = strtotime($start_date);
     $end = strtotime($end_date);
@@ -240,116 +260,86 @@ if(isset($_POST['auto_generate'])){
         $date = date("Y-m-d", $current);
         $day_name = date("l", $current);
 
-        while($row = mysqli_fetch_assoc($personnel)){
+        // prevent duplicate
+        $check = mysqli_query($conn, "
+        SELECT * FROM work_schedule 
+        WHERE user_id='$user' 
+        AND schedule_date='$date'
+        ");
 
-            $user_id = $row['id'];
-
-            // duplicate check
-            $check = mysqli_query($conn, "
-            SELECT * FROM work_schedule 
-            WHERE user_id='$user_id' 
-            AND schedule_date='$date'
-            ");
-
-            if(mysqli_num_rows($check) > 0){
-                continue;
-            }
-
-            // rest day
-            if($day_name == $rest_day){
-    mysqli_query($conn, "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out)
-    VALUES('$user_id','Auto Assigned','REST','$date',NULL,NULL)");
-    continue;
-}
-
-            // shift logic
-            if($shift_type == 2){
-
-    $shift = rand(1,2);
-
-    if($shift == 1){
-        $shift_name = "Morning";
-        $time_in = "06:00:00";
-        $time_out = "15:00:00";
-    } else {
-        $shift_name = "2nd Shift";
-        $time_in = "08:00:00";
-        $time_out = "17:00:00";
-    }
-
-} else {
-
-    $shift = rand(1,3);
-
-    if($shift == 1){
-        $shift_name = "Morning";
-        $time_in = "06:00:00";
-        $time_out = "15:00:00";
-    } elseif($shift == 2){
-        $shift_name = "2nd Shift";
-        $time_in = "08:00:00";
-        $time_out = "17:00:00";
-    } else {
-        $shift_name = "3rd Shift";
-        $time_in = "09:00:00";
-        $time_out = "18:00:00";
-    }
-}
-
-            mysqli_query($conn, "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out)
-VALUES('$user_id','Auto Assigned','$shift_name','$date','$time_in','$time_out')");
+        if(mysqli_num_rows($check) > 0){
+            $current = strtotime("+1 day", $current);
+            continue;
         }
 
+        // REST OR SHIFT
+        if(in_array($day_name, $rest_days)){
+            $shift_name = "REST";
+            $time_in = NULL;
+            $time_out = NULL;
+        } else {
+
+            $shift_name = $shift;
+
+            if($shift == "Morning"){
+                $time_in = "06:00:00";
+                $time_out = "15:00:00";
+            }
+            elseif($shift == "2nd Shift"){
+                $time_in = "08:00:00";
+                $time_out = "17:00:00";
+            }
+            elseif($shift == "3rd Shift"){
+                $time_in = "10:00:00";
+                $time_out = "19:00:00";
+            }
+            elseif($shift == "Morning Shift"){
+                $time_in = "07:00:00";
+                $time_out = "16:00:00";
+            }
+        }
+
+        // ✅ SINGLE INSERT
+        // handle NULL properly
+if($time_in === NULL){
+    $time_in = NULL;
+}
+if($time_out === NULL){
+    $time_out = NULL;
+}
+
+// insert
+$stmt->bind_param("isssss",$user,$area,$shift_name,$date,$time_in,$time_out);
+$stmt->execute();
+
         $current = strtotime("+1 day", $current);
-        mysqli_data_seek($personnel, 0);
+    }
+
+    echo "<script>alert('Schedule Generated Successfully'); window.location='schedule.php';</script>";
+}
+
+if(isset($_POST['update_task'])){
+
+    $id = $_POST['id'];
+    $user = $_POST['user_id'];
+    $area = $_POST['work_area'];
+    $shift = $_POST['shift'];
+    $date = $_POST['schedule_date'];
+    $time_in = $_POST['time_in'];
+    $time_out = $_POST['time_out'];
+
+    $stmt = $conn->prepare("UPDATE work_schedule 
+        SET user_id=?, work_area=?, shift=?, schedule_date=?, time_in=?, time_out=? 
+        WHERE id=?");
+
+    $stmt->bind_param("isssssi",$user,$area,$shift,$date,$time_in,$time_out,$id);
+
+    if($stmt->execute()){
+        echo "<script>alert('Schedule Updated Successfully'); window.location='schedule.php';</script>";
     }
 }
 ?>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-document.getElementById("personnel_select").addEventListener("change", function() {
-    let selected = this.options[this.selectedIndex];
-    let area = selected.getAttribute("data-area");
-
-    document.getElementById("work_area").value = area ? area : "No Area Assigned";
-document.getElementById("work_area").style.color = area ? "black" : "red";
-});
-
-// auto-fill on load
-window.onload = function() {
-    let select = document.getElementById("personnel_select");
-    let selected = select.options[select.selectedIndex];
-    let area = selected.getAttribute("data-area");
-
-    document.getElementById("work_area").value = area ? area : "No Area Assigned";
-document.getElementById("work_area").style.color = area ? "black" : "red";
-};
-</script>
-
-<script>
-document.querySelector("select[name='shift']").addEventListener("change", function(){
-
-    let shift = this.value;
-
-    let timeIn = document.querySelector("input[name='time_in']");
-    let timeOut = document.querySelector("input[name='time_out']");
-
-    if(shift === "Morning"){
-        timeIn.value = "06:00";
-        timeOut.value = "15:00";
-    }
-    else if(shift === "2nd Shift"){
-        timeIn.value = "08:00";
-        timeOut.value = "17:00";
-    }
-    else if(shift === "3rd Shift"){
-        timeIn.value = "09:00";
-        timeOut.value = "18:00";
-    }
-});
-</script>
 
 </body>
 </html>
