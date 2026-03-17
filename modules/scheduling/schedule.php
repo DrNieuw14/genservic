@@ -111,11 +111,11 @@ value="<?= $edit_mode ? $edit_data['work_area'] : '' ?>">
 
 <!-- ✅ ADD HERE -->
 <label>Time In</label>
-<input type="time" name="time_in" class="form-control mb-3"
+<input type="text" id="time_in" name="time_in" class="form-control mb-3"
 value="<?= $edit_mode ? date('H:i', strtotime($edit_data['time_in'])) : '' ?>">
 
 <label>Time Out</label>
-<input type="time" name="time_out" class="form-control mb-3"
+<input type="text" id="time_out" name="time_out" class="form-control mb-3"
 value="<?= $edit_mode ? date('H:i', strtotime($edit_data['time_out'])) : '' ?>">
 
 <?php if($edit_mode): ?>
@@ -135,11 +135,9 @@ value="<?= $edit_data['schedule_date'] ?>">
 <input type="hidden" name="start_date" id="start_date">
 <input type="hidden" name="end_date" id="end_date">
 
-<label>Rest Days</label><br>
+<label class="fw-bold d-block mb-2">Select Rest Day</label>
 
-<h6 class="mt-3">Schedule Preview</h6>
-<div id="schedule_preview" class="border p-3 bg-light" style="max-height:200px; overflow:auto;">
-    <small class="text-muted">Preview will appear here...</small>
+<div class="d-flex flex-wrap gap-2">
 </div>
 
 <?php
@@ -216,7 +214,7 @@ while($row = mysqli_fetch_assoc($result)){
         echo "<td><span class='badge bg-success'>".$row['shift']."</span></td>";
     }
 
-    
+    echo "<td>".$row['schedule_date']."</td>";
     echo "<td>".$row['time_in']."</td>";
     echo "<td>".$row['time_out']."</td>";
     echo "<td>
@@ -316,6 +314,15 @@ if($time_out === NULL){
 }
 
 // insert
+// FIX TIME FORMAT FIRST
+if($time_in !== NULL){
+    $time_in = date("H:i:s", strtotime($time_in));
+}
+if($time_out !== NULL){
+    $time_out = date("H:i:s", strtotime($time_out));
+}
+
+// THEN bind
 $stmt->bind_param("isssss",$user,$area,$shift_name,$date,$time_in,$time_out);
 $stmt->execute();
 
@@ -366,10 +373,15 @@ document.getElementById("personnel_select").addEventListener("change", function(
 // auto-load on page open
 window.onload = function() {
     document.getElementById("personnel_select").dispatchEvent(new Event("change"));
+
+    setTimeout(() => {
+        document.getElementById("shift_select").dispatchEvent(new Event("change"));
+    }, 300);
 };
 </script>
 
 <script>
+    
 function generatePreview(){
 
     let start = document.getElementById("start_date").value;
@@ -391,22 +403,40 @@ function generatePreview(){
     let endDate = new Date(end);
 
     let html = "";
+    let workCount = 0;
+    let restCount = 0;
 
     while(current <= endDate){
 
         let dateStr = current.toISOString().split('T')[0];
         let dayName = current.toLocaleDateString('en-US', { weekday: 'long' });
+        let dayShort = current.toLocaleDateString('en-US', { weekday: 'short' });
 
         if(restDays.includes(dayName)){
-            html += `<div class="text-danger">${dateStr} - REST</div>`;
+            restCount++;
+
+            html += `<div class="d-flex justify-content-between border-bottom py-1">
+                <span>${dayShort} | ${dateStr}</span>
+                <span class="badge bg-danger">REST</span>
+            </div>`;
         } else {
-            html += `<div>${dateStr} - ${shift}</div>`;
+            workCount++;
+
+            html += `<div class="d-flex justify-content-between border-bottom py-1">
+                <span>${dayShort} | ${dateStr}</span>
+                <span class="badge bg-success">${shift}</span>
+            </div>`;
         }
 
         current.setDate(current.getDate() + 1);
     }
 
-    previewBox.innerHTML = html;
+    previewBox.innerHTML = `
+    <div class="mb-2 fw-bold">
+        Work Days: ${workCount} | Rest Days: ${restCount}
+    </div>
+    ${html}
+    `;
 }
 
 // TRIGGERS
@@ -422,6 +452,7 @@ document.querySelectorAll("input[name='rest_days[]']").forEach(cb => {
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 
 <script>
+// DATE RANGE PICKER
 flatpickr("#date_range", {
     mode: "range",
     dateFormat: "Y-m-d",
@@ -435,12 +466,70 @@ flatpickr("#date_range", {
             document.getElementById("start_date").value = start;
             document.getElementById("end_date").value = end;
 
-            // trigger preview
             generatePreview();
         }
     }
 });
+
+// TIME PICKERS (SEPARATE)
+flatpickr("#time_in", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "h:i K",
+    time_24hr: false
+});
+
+flatpickr("#time_out", {
+    enableTime: true,
+    noCalendar: true,
+    dateFormat: "h:i K",
+    time_24hr: false
+});
+
+document.getElementById("shift_select").addEventListener("change", function(){
+
+    let shift = this.value;
+
+    let timeIn = document.getElementById("time_in")._flatpickr;
+    let timeOut = document.getElementById("time_out")._flatpickr;
+
+    if(!timeIn || !timeOut) return;
+
+    if(shift === "Morning"){
+        timeIn.setDate("06:00");
+        timeOut.setDate("15:00");
+    }
+    else if(shift === "2nd Shift"){
+        timeIn.setDate("08:00");
+        timeOut.setDate("17:00");
+    }
+    else if(shift === "3rd Shift"){
+        timeIn.setDate("10:00");
+        timeOut.setDate("19:00");
+    }
+    else if(shift === "Morning Shift"){
+        timeIn.setDate("07:00");
+        timeOut.setDate("16:00");
+    }
+
+});
+
+document.getElementById("time_out").addEventListener("change", function(){
+
+    let timeIn = document.getElementById("time_in").value;
+    let timeOut = this.value;
+
+    if(timeIn && timeOut && timeOut <= timeIn){
+        alert("Time Out must be later than Time In");
+        this.value = "";
+    }
+
+});
+
+
 </script>
+
+
 
 
 </html>
