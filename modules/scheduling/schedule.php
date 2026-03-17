@@ -179,7 +179,6 @@ foreach($days as $day){
 <thead class="table-light">
 <tr>
 <th>ID</th>
-<th>Personnel</th>
 <th>Area</th>
 <th>Shift</th>
 <th>Date</th>
@@ -187,25 +186,59 @@ foreach($days as $day){
 <th>Time Out</th>
 <th>Action</th>
 </tr>
+
 </thead>
 
 <?php
 $query = "
-SELECT work_schedule.*, users.fullname
+SELECT work_schedule.*, users.fullname, personnel.id AS personnel_id
 FROM work_schedule
 JOIN personnel ON work_schedule.user_id = personnel.id
 JOIN users ON personnel.user_id = users.id
+ORDER BY users.fullname, schedule_date ASC
 ";
 
 $result = mysqli_query($conn,$query);
 ?>
+
 <tbody>
 
 <?php
+$current_name = "";
+
 while($row = mysqli_fetch_assoc($result)){
+
+    // SHOW NAME ONLY ONCE
+    if($current_name != $row['fullname']){
+        echo "<tr style='background:#e9ecef; font-weight:bold;'>
+        <td colspan='7'>
+            <div class='d-flex justify-content-between align-items-center'>
+
+                <span>
+                    👤 ".$row['fullname']."
+                </span>
+
+                <a href='../personnel/personnel_schedule.php?id=".$row['personnel_id']."' 
+                   class='btn btn-sm btn-outline-primary'>
+                   View Schedule
+                </a>
+
+            </div>
+        </td>
+      </tr>";
+
+        $current_name = $row['fullname'];
+    }
+
+    // FORMAT DATE
+    $date = date("M d, Y", strtotime($row['schedule_date']));
+
+    // FORMAT TIME
+    $time_in = $row['time_in'] ? date("h:i A", strtotime($row['time_in'])) : '-';
+    $time_out = $row['time_out'] ? date("h:i A", strtotime($row['time_out'])) : '-';
+
     echo "<tr>";
     echo "<td>".$row['id']."</td>";
-    echo "<td>".$row['fullname']."</td>";
     echo "<td>".$row['work_area']."</td>";
 
     if($row['shift'] == 'REST'){
@@ -214,12 +247,14 @@ while($row = mysqli_fetch_assoc($result)){
         echo "<td><span class='badge bg-success'>".$row['shift']."</span></td>";
     }
 
-    echo "<td>".$row['schedule_date']."</td>";
-    echo "<td>".$row['time_in']."</td>";
-    echo "<td>".$row['time_out']."</td>";
+    echo "<td>".$date."</td>";
+    echo "<td>".$time_in."</td>";
+    echo "<td>".$time_out."</td>";
+
     echo "<td>
-<a href='schedule.php?edit_id=".$row['id']."' class='btn btn-warning btn-sm'>Edit</a>
-</td>";
+    <a href='schedule.php?edit_id=".$row['id']."' class='btn btn-warning btn-sm'>Edit</a>
+    </td>";
+
     echo "</tr>";
 }
 ?>
