@@ -55,28 +55,46 @@ require_role(['supervisor','admin']);
 <form method="POST">
 
 <label>Select Personnel</label>
-<select name="user_id" class="form-control mb-3">
+<select name="user_id" id="personnel_select" class="form-control mb-3">
+
 <?php
 $query = "
-SELECT personnel.id, users.fullname, users.username 
+SELECT 
+    personnel.id, 
+    users.fullname, 
+    users.username,
+    GROUP_CONCAT(personnel_areas.area_name SEPARATOR ', ') AS areas
 FROM personnel
 JOIN users ON personnel.user_id = users.id
+LEFT JOIN personnel_areas ON personnel.id = personnel_areas.personnel_id
+GROUP BY personnel.id
 ";
+
 $result = mysqli_query($conn,$query);
 
 while($row = mysqli_fetch_assoc($result)){
-echo "<option value='".$row['id']."'>".$row['fullname']." (".$row['username'].")</option>";
+    echo "<option value='".$row['id']."' data-area='".$row['areas']."'>"
+        .$row['fullname']." (".$row['username'].")</option>";
 }
 ?>
+
 </select>
 
-<input type="text" name="work_area" placeholder="Assigned Area" class="form-control mb-3">
+<label>Assigned Area</label>
+<input type="text" id="work_area" name="work_area" class="form-control mb-3" readonly>
 
 <select name="shift" class="form-control mb-3">
-<option>Morning</option>
-<option>Afternoon</option>
-<option>Evening</option>
+<option value="Morning">Morning (6AM-3PM)</option>
+<option value="2nd Shift">2nd Shift (8AM-5PM)</option>
+<option value="3rd Shift">3rd Shift (9AM-6PM)</option>
 </select>
+
+<!-- ✅ ADD HERE -->
+<label>Time In</label>
+<input type="time" name="time_in" class="form-control mb-3">
+
+<label>Time Out</label>
+<input type="time" name="time_out" class="form-control mb-3">
 
 <input type="date" name="schedule_date" class="form-control mb-2">
 
@@ -129,6 +147,8 @@ echo "<option value='".$row['id']."'>".$row['fullname']." (".$row['username'].")
 <th>Area</th>
 <th>Shift</th>
 <th>Date</th>
+<th>Time In</th>
+<th>Time Out</th>
 </tr>
 </thead>
 
@@ -158,6 +178,8 @@ while($row = mysqli_fetch_assoc($result)){
     }
 
     echo "<td>".$row['schedule_date']."</td>";
+    echo "<td>".$row['time_in']."</td>";
+    echo "<td>".$row['time_out']."</td>";
     echo "</tr>";
 }
 ?>
@@ -184,8 +206,11 @@ if(isset($_POST['assign_task'])){
     $shift = $_POST['shift'];
     $date = $_POST['schedule_date'];
 
-    $query = "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date)
-    VALUES('$user','$area','$shift','$date')";
+    $time_in = $_POST['time_in'];
+    $time_out = $_POST['time_out'];
+
+    $query = "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out)
+    VALUES('$user','$area','$shift','$date','$time_in','$time_out')";
 
     mysqli_query($conn,$query);
 
@@ -232,30 +257,47 @@ if(isset($_POST['auto_generate'])){
 
             // rest day
             if($day_name == $rest_day){
-                mysqli_query($conn, "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date)
-                VALUES('$user_id','Auto Assigned','REST','$date')");
-                continue;
-            }
+    mysqli_query($conn, "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out)
+    VALUES('$user_id','Auto Assigned','REST','$date',NULL,NULL)");
+    continue;
+}
 
             // shift logic
             if($shift_type == 2){
-                $shift = rand(1,2);
-                $shift_name = ($shift == 1) 
-                    ? "Morning (6AM-2PM)" 
-                    : "Afternoon (2PM-10PM)";
-            } else {
-                $shift = rand(1,3);
-                if($shift == 1){
-                    $shift_name = "Morning (6AM-2PM)";
-                } elseif($shift == 2){
-                    $shift_name = "Afternoon (2PM-10PM)";
-                } else {
-                    $shift_name = "Night (10PM-6AM)";
-                }
-            }
 
-            mysqli_query($conn, "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date)
-            VALUES('$user_id','Auto Assigned','$shift_name','$date')");
+    $shift = rand(1,2);
+
+    if($shift == 1){
+        $shift_name = "Morning";
+        $time_in = "06:00:00";
+        $time_out = "15:00:00";
+    } else {
+        $shift_name = "2nd Shift";
+        $time_in = "08:00:00";
+        $time_out = "17:00:00";
+    }
+
+} else {
+
+    $shift = rand(1,3);
+
+    if($shift == 1){
+        $shift_name = "Morning";
+        $time_in = "06:00:00";
+        $time_out = "15:00:00";
+    } elseif($shift == 2){
+        $shift_name = "2nd Shift";
+        $time_in = "08:00:00";
+        $time_out = "17:00:00";
+    } else {
+        $shift_name = "3rd Shift";
+        $time_in = "09:00:00";
+        $time_out = "18:00:00";
+    }
+}
+
+            mysqli_query($conn, "INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out)
+VALUES('$user_id','Auto Assigned','$shift_name','$date','$time_in','$time_out')");
         }
 
         $current = strtotime("+1 day", $current);
@@ -265,5 +307,49 @@ if(isset($_POST['auto_generate'])){
 ?>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+document.getElementById("personnel_select").addEventListener("change", function() {
+    let selected = this.options[this.selectedIndex];
+    let area = selected.getAttribute("data-area");
+
+    document.getElementById("work_area").value = area ? area : "No Area Assigned";
+document.getElementById("work_area").style.color = area ? "black" : "red";
+});
+
+// auto-fill on load
+window.onload = function() {
+    let select = document.getElementById("personnel_select");
+    let selected = select.options[select.selectedIndex];
+    let area = selected.getAttribute("data-area");
+
+    document.getElementById("work_area").value = area ? area : "No Area Assigned";
+document.getElementById("work_area").style.color = area ? "black" : "red";
+};
+</script>
+
+<script>
+document.querySelector("select[name='shift']").addEventListener("change", function(){
+
+    let shift = this.value;
+
+    let timeIn = document.querySelector("input[name='time_in']");
+    let timeOut = document.querySelector("input[name='time_out']");
+
+    if(shift === "Morning"){
+        timeIn.value = "06:00";
+        timeOut.value = "15:00";
+    }
+    else if(shift === "2nd Shift"){
+        timeIn.value = "08:00";
+        timeOut.value = "17:00";
+    }
+    else if(shift === "3rd Shift"){
+        timeIn.value = "09:00";
+        timeOut.value = "18:00";
+    }
+});
+</script>
+
 </body>
 </html>
