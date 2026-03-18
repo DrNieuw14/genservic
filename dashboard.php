@@ -57,7 +57,29 @@ for ($i = 6; $i >= 0; $i--) {
     $stmt->close();
 }
 
+$userFullName = "Unknown";
+
+if (isset($_SESSION['user_id'])) {
+    $stmt = $conn->prepare("
+        SELECT fullname 
+        FROM users 
+        WHERE id = ?
+    ");
+    $stmt->bind_param("i", $_SESSION['user_id']);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    if ($row = $res->fetch_assoc()) {
+        $userFullName = $row['fullname'];
+    }
+
+    $stmt->close();
+}
+
 ?>
+
+
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -82,7 +104,8 @@ for ($i = 6; $i >= 0; $i--) {
             <div class="text-end">
                  <div>
                     Logged in as: 
-                    <strong><?= htmlspecialchars($_SESSION['user'], ENT_QUOTES, 'UTF-8'); ?></strong>
+                    
+                    <strong><?= htmlspecialchars($userFullName, ENT_QUOTES, 'UTF-8'); ?></strong>
                     (<?= htmlspecialchars($_SESSION['role'], ENT_QUOTES, 'UTF-8'); ?>)
                 </div>
 

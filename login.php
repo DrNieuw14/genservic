@@ -21,7 +21,7 @@ if (isset($_POST['login'])) {
 
     } else {
 
-        $stmt = $conn->prepare("SELECT id, username, password, role, personnel_id, status FROM users WHERE username = ? LIMIT 1");
+        $stmt = $conn->prepare("SELECT id, username, password, role, personnel_id, status, fullname FROM users WHERE username = ? LIMIT 1");
 
         if ($stmt) {
 
@@ -47,6 +47,9 @@ if (isset($_POST['login'])) {
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['user_id'] = $user['id'];
                     $_SESSION['personnel_id'] = $user['personnel_id'];
+
+                    // ✅ ADD THIS LINE
+                    $_SESSION['fullname'] = $user['fullname'];
 
                     header("Location: dashboard.php");
                     exit();
