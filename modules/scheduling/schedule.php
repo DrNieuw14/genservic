@@ -225,7 +225,7 @@ foreach($days as $day){
 $query = "
 SELECT work_schedule.*, users.fullname, personnel.id AS personnel_id
 FROM work_schedule
-JOIN personnel ON work_schedule.user_id = personnel.id
+JOIN personnel ON work_schedule.personnel_id = personnel.id
 JOIN users ON personnel.user_id = users.id
 ORDER BY users.fullname, schedule_date ASC
 ";
@@ -308,7 +308,7 @@ while($row = mysqli_fetch_assoc($result)){
 
 if(isset($_POST['assign_task'])){
 
-    $user = $_POST['user_id'];
+    $personnel_id = $_POST['user_id']; // because dropdown = personnel.id
     $area = $_POST['work_area'];
     $shift = $_POST['shift'];
 
@@ -322,8 +322,9 @@ if(isset($_POST['assign_task'])){
     }
 
     // ✅ PREPARE ONCE
-    $stmt = $conn->prepare("INSERT INTO work_schedule(user_id,work_area,shift,schedule_date,time_in,time_out) VALUES(?,?,?,?,?,?)");
-
+    
+$stmt = $conn->prepare("INSERT INTO work_schedule(personnel_id,work_area,shift,schedule_date,time_in,time_out) VALUES(?,?,?,?,?,?)
+");
     $current = strtotime($start_date);
     $end = strtotime($end_date);
 
@@ -335,7 +336,7 @@ if(isset($_POST['assign_task'])){
         // prevent duplicate
         $check = mysqli_query($conn, "
         SELECT * FROM work_schedule 
-        WHERE user_id='$user' 
+        WHERE personnel_id='$personnel_id'
         AND schedule_date='$date'
         ");
 
@@ -390,7 +391,7 @@ if($time_out !== NULL){
 }
 
 // THEN bind
-$stmt->bind_param("isssss",$user,$area,$shift_name,$date,$time_in,$time_out);
+$stmt->bind_param("isssss",$personnel_id,$area,$shift_name,$date,$time_in,$time_out);
 $stmt->execute();
 
         $current = strtotime("+1 day", $current);
@@ -402,18 +403,20 @@ $stmt->execute();
 if(isset($_POST['update_task'])){
 
     $id = $_POST['id'];
-    $user = $_POST['user_id'];
+    $personnel_id = $_POST['user_id']; // from dropdown
     $area = $_POST['work_area'];
     $shift = $_POST['shift'];
     $date = $_POST['schedule_date'];
     $time_in = $_POST['time_in'];
     $time_out = $_POST['time_out'];
 
-    $stmt = $conn->prepare("UPDATE work_schedule 
-        SET user_id=?, work_area=?, shift=?, schedule_date=?, time_in=?, time_out=? 
-        WHERE id=?");
+    $stmt = $conn->prepare("
+        UPDATE work_schedule 
+        SET personnel_id=?, work_area=?, shift=?, schedule_date=?, time_in=?, time_out=? 
+        WHERE id=?
+    ");
 
-    $stmt->bind_param("isssssi",$user,$area,$shift,$date,$time_in,$time_out,$id);
+    $stmt->bind_param("isssssi", $personnel_id, $area, $shift, $date, $time_in, $time_out, $id);
 
     if($stmt->execute()){
         echo "<script>alert('Schedule Updated Successfully'); window.location='schedule.php';</script>";

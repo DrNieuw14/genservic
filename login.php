@@ -46,7 +46,25 @@ if (isset($_POST['login'])) {
                     $_SESSION['user'] = $user['username'];
                     $_SESSION['role'] = $user['role'];
                     $_SESSION['user_id'] = $user['id'];
-                    $_SESSION['personnel_id'] = $user['personnel_id'];
+                    $personnelId = $user['personnel_id'];
+
+                    // 🔍 If missing, auto-detect from personnel table
+                    if (empty($personnelId)) {
+                        $stmt2 = $conn->prepare("SELECT id FROM personnel WHERE user_id = ? LIMIT 1");
+                        $stmt2->bind_param("i", $user['id']);
+                        $stmt2->execute();
+                        $res2 = $stmt2->get_result();
+
+                        if ($row2 = $res2->fetch_assoc()) {
+                            $personnelId = $row2['id'];
+                        }
+
+                        $stmt2->close();
+                    }
+
+                    // ✅ Store in session
+                    $_SESSION['personnel_id'] = $personnelId;
+
 
                     // ✅ ADD THIS LINE
                     $_SESSION['fullname'] = $user['fullname'];

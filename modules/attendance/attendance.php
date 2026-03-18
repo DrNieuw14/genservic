@@ -3,11 +3,16 @@ require_once __DIR__ . '/../../config/database.php';
 require_once __DIR__ . '/../../config/auth.php';
 require_once __DIR__ . '/../../config/layout.php';
 
+date_default_timezone_set('Asia/Manila');
+
 require_role(['admin', 'supervisor', 'personnel']);
 
 $statusToday = "Not Timed In";
 $timeInToday = null;
 $timeOutToday = null;
+$undertime = null;
+$overtime = null;
+$totalHours = null;
 
 
 
@@ -15,6 +20,8 @@ $isPersonnel = ($_SESSION['role'] === 'personnel');
 
 $feedback = ['type' => '', 'message' => ''];
 $today = date('Y-m-d');
+
+
 if ($isPersonnel) {
     $selectedUserId = $_SESSION['personnel_id'];
 } else {
@@ -28,7 +35,7 @@ if ($isPersonnel) {
         $result = $conn->query("
     SELECT p.id 
     FROM personnel p
-    JOIN users u ON u.personnel_id = p.id
+    JOIN users u ON p.user_id = u.id
     WHERE u.status = 'approved'
     LIMIT 1
 ");
@@ -57,38 +64,112 @@ if ($userId <= 0) {
 ========================= */
 if ($userId > 0) {
     $stmt = $conn->prepare("
-        SELECT time_in, time_out, status 
-        FROM attendance 
-        WHERE personnel_id = ? AND date = ?
+        SELECT time_in, time_out, status, undertime, overtime
+        FROM attendance
+                WHERE personnel_id = ? AND date = ?
         LIMIT 1
     ");
+    
     $stmt->bind_param("is", $userId, $today);
     $stmt->execute();
     $result = $stmt->get_result();
+   
 
     if ($row = $result->fetch_assoc()) {
-        $statusToday = $row['status'];
-        $timeInToday = $row['time_in'];
-        $timeOutToday = $row['time_out'];
+    $statusToday = $row['status'];
+    $timeInToday = $row['time_in'];
+    $timeOutToday = $row['time_out'];
+    $undertime = $row['undertime'] ?? null;
+    $overtime = $row['overtime'] ?? null;
 
-        if ($timeOutToday) {
-            $statusToday = "Completed";
+    if(empty($timeOutToday)){
+        $undertime = null;
+    }
+        
+
+        if ($timeInToday && $timeOutToday) {
+            $seconds = max(0, strtotime($timeOutToday) - strtotime($timeInToday));
+            $totalHours = gmdate("H:i:s", $seconds);
         }
     }
 
     $stmt->close();
 }
+
+// =========================
+// MONTHLY SUMMARY (ADD HERE)
+// =========================
+$monthlyHours = "00:00:00";
+$monthlyOT = "00:00:00";
+
+if ($userId > 0) {
+
+    $summarySql = "
+    SELECT 
+        SEC_TO_TIME(SUM(TIME_TO_SEC(TIMEDIFF(time_out, time_in)))) AS total_hours,
+        SEC_TO_TIME(SUM(TIME_TO_SEC(COALESCE(overtime,'00:00:00')))) AS total_overtime
+    FROM attendance
+    WHERE personnel_id = ? 
+    AND MONTH(date) = MONTH(CURRENT_DATE())
+    AND YEAR(date) = YEAR(CURRENT_DATE())
+    AND time_out IS NOT NULL
+    ";
+
+    $stmt = $conn->prepare($summarySql);
+    $stmt->bind_param("i", $userId);
+    $stmt->execute();
+    $summary = $stmt->get_result()->fetch_assoc();
+
+    if ($summary) {
+        $monthlyHours = $summary['total_hours'] ?? "00:00:00";
+        $monthlyOT = $summary['total_overtime'] ?? "00:00:00";
+    }
+
+    $stmt->close();
+}
+
+
+
 $currentTime = date('H:i:s');
+
+$shiftName = null;
+$shiftStart = null;
+$shiftEnd = null;
+
+if ($userId > 0) {
+    $stmt = $conn->prepare("
+    SELECT shift, time_in, time_out
+    FROM work_schedule
+    WHERE personnel_id = ? AND schedule_date = ?
+    LIMIT 1
+");
+$stmt->bind_param("is", $userId, $today);
+    $stmt->execute();
+    $res = $stmt->get_result();
+
+    if ($row = $res->fetch_assoc()) {
+        $shiftName = $row['shift'];
+        $shiftStart = $row['time_in'];
+        $shiftEnd = $row['time_out'];
+    }
+
+    $stmt->close();
+}
+    
 
 $areaName = "Not Assigned";
 $displayName = "Unknown";
 
 if ($userId > 0) {
     $stmt = $conn->prepare("
-    SELECT u.fullname, p.assigned_area
+    SELECT 
+        u.fullname,
+        GROUP_CONCAT(pa.area_name SEPARATOR ', ') AS assigned_area
     FROM personnel p
-    LEFT JOIN users u ON u.personnel_id = p.id
+    LEFT JOIN users u ON p.user_id = u.id
+    LEFT JOIN personnel_areas pa ON p.id = pa.personnel_id
     WHERE p.id = ?
+    GROUP BY p.id
 ");
     $stmt->bind_param("i", $userId);
     $stmt->execute();
@@ -96,7 +177,7 @@ if ($userId > 0) {
 
     if ($row = $res->fetch_assoc()) {
         $displayName = $row['fullname'];
-        $areaName = $row['assigned_area'];
+        $areaName = $row['assigned_area'] ?? '';
     } else {
         $displayName = "No Record Found";
         $areaName = "Not Assigned";
@@ -108,11 +189,11 @@ if ($userId > 0) {
 $personnelList = [];
 
 $personnelSql = "
-    SELECT p.id, p.fullname 
+    SELECT p.id, u.fullname 
     FROM personnel p
-    JOIN users u ON u.personnel_id = p.id
+    JOIN users u ON p.user_id = u.id
     WHERE u.status = 'approved'
-    ORDER BY p.fullname ASC
+    ORDER BY u.fullname ASC
 ";
 
 $personnelResult = $conn->query($personnelSql);
@@ -150,7 +231,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         if ($exists) {
             $feedback = ['type' => 'warning', 'message' => 'Duplicate Time In is not allowed.'];
         } else {
-            $status = ($currentTime > '08:00:00') ? 'Late' : 'Present';
+            if ($shiftName === 'REST') {
+                $status = 'Rest Day (Worked)';
+            } 
+            
+            elseif ($shiftStart) {
+
+                if (strtotime($currentTime) < strtotime($shiftStart)) {
+                    $status = 'Early';
+                }
+                elseif (strtotime($currentTime) > strtotime($shiftStart)) {
+                    $status = 'Late';
+                }
+                else {
+                    $status = 'Present';
+                }
+
+        
+
+            } else {
+                $status = 'No Schedule';
+            }
 
             $insertSql = 'INSERT INTO attendance (personnel_id, date, time_in, status)
                           VALUES (?, ?, ?, ?)';
@@ -164,20 +265,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
     } elseif ($action === 'time_out') {
 
-        $endTime = '17:00:00';
+    // 🔥 RELOAD latest time_in (IMPORTANT FIX)
+    $checkSql = "SELECT time_in FROM attendance WHERE personnel_id=? AND date=? LIMIT 1";
+    $checkStmt = $conn->prepare($checkSql);
+    $checkStmt->bind_param("is", $userId, $today);
+    $checkStmt->execute();
+    $res = $checkStmt->get_result();
+    $row = $res->fetch_assoc();
+    $timeInToday = $row['time_in'] ?? null;
+    $checkStmt->close();
+
+            // ❌ prevent time out without time in
+        if (!$timeInToday) {
+            $feedback = ['type' => 'danger', 'message' => 'You must Time In first.'];
+        } else {
+
+        $endTime = $shiftEnd;
         $undertime = null;
+        $overtime = null;
 
-        if ($currentTime < $endTime) {
-            $seconds = strtotime($endTime) - strtotime($currentTime);
-            $undertime = gmdate("H:i:s", $seconds);
+        if ($shiftName === 'REST' && $timeInToday) {
+            // ALL TIME is overtime
+            $seconds = strtotime($currentTime) - strtotime($timeInToday);
+            $overtime = gmdate("H:i:s", $seconds);
         }
+        elseif ($endTime) {
 
+            if (strtotime($currentTime) < strtotime($endTime)) {
+                $seconds = strtotime($endTime) - strtotime($currentTime);
+                $undertime = gmdate("H:i:s", $seconds);
+            } elseif (strtotime($currentTime) > strtotime($endTime)) {
+                $seconds = strtotime($currentTime) - strtotime($endTime);
+                $overtime = gmdate("H:i:s", $seconds);
+            }
+
+        }
+      
         $updateSql = 'UPDATE attendance
-                      SET time_out = ?, undertime = ?
+                      SET time_out = ?, undertime = ?, overtime = ?
                       WHERE personnel_id = ? AND date = ? AND time_out IS NULL';
 
         $updateStmt = $conn->prepare($updateSql);
-        $updateStmt->bind_param('ssis', $currentTime, $undertime, $userId, $today);
+        $updateStmt->bind_param('sssis', $currentTime, $undertime, $overtime, $userId, $today);
         $updateStmt->execute();
 
         if ($updateStmt->affected_rows > 0) {
@@ -187,6 +316,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         }
 
         $updateStmt->close();
+        }
     }
 }
        
@@ -244,13 +374,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         👤 <?= htmlspecialchars($displayName); ?>
     </h5>
 
+    
     <p class="mb-1">
-    📍 Area: <?= htmlspecialchars($areaName); ?>
+📍 Area:
+<?php if (!empty($areaName)): ?>
+    <?php foreach (explode(',', $areaName) as $area): ?>
+        <span class="badge bg-secondary me-1">
+            <?= htmlspecialchars(trim($area)); ?>
+        </span>
+    <?php endforeach; ?>
+<?php else: ?>
+    <span class="text-muted">No area assigned</span>
+<?php endif; ?>
+</p>
+    
+
+    <p class="mb-1">
+    📅 <?= date('F d, Y'); ?>
     </p>
 
     <p class="mb-1">
-        📅 <?= date('F d, Y'); ?>
-    </p>
+🕘 Shift:
+<?php if ($shiftName): ?>
+    <span class="badge bg-info text-dark">
+        <?= htmlspecialchars($shiftName); ?>
+    </span>
+    (<?= date('h:i A', strtotime($shiftStart)); ?> - 
+     <?= date('h:i A', strtotime($shiftEnd)); ?>)
+<?php else: ?>
+    <span class="text-muted">No schedule today</span>
+<?php endif; ?>
+</p>
+
 
     <p class="mb-1">
     🕒 Current Time: 
@@ -266,6 +421,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     if ($statusToday == "Present") $badge = "success";
                     elseif ($statusToday == "Late") $badge = "warning";
                     elseif ($statusToday == "Completed") $badge = "primary";
+                    elseif ($statusToday == "Rest Day (Worked)") $badge = "dark";
+                    elseif ($statusToday == "No Schedule") $badge = "secondary";
+                    elseif ($statusToday == "Early") $badge = "info";
                     ?>
 
                     <span class="badge bg-<?= $badge ?>">
@@ -275,12 +433,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     </p>
 
     <?php if ($timeInToday): ?>
-        <p class="mb-1">⏰ Time In: <?= $timeInToday; ?></p>
+        <p class="mb-1">⏰ Time In: <?= date("h:i:s A", strtotime($timeInToday)); ?></p>
     <?php endif; ?>
 
     <?php if ($timeOutToday): ?>
-        <p class="mb-0">🏁 Time Out: <?= $timeOutToday; ?></p>
+        <p class="mb-0">🏁 Time Out: <?= date("h:i:s A", strtotime($timeOutToday)); ?></p>
     <?php endif; ?>
+
+        <?php if ($totalHours): ?>
+        <p class="mb-0">🧮 Total Hours: <?= $totalHours; ?></p>
+    <?php endif; ?>
+
+    <?php if ($timeOutToday && !empty($undertime)): ?>
+    <p class="text-warning">⏳ Undertime: <?= $undertime; ?></p>
+<?php endif; ?>
+
+    <?php if ($timeOutToday && !empty($overtime)): ?>
+        <p class="text-success">🔥 Overtime: <?= $overtime; ?></p>
+    <?php endif; ?>
+
+    <hr>
+
+    <p>📊 Monthly Total Hours: 
+        <strong><?= $monthlyHours; ?></strong>
+    </p>
+
+    <p>🔥 Monthly Overtime: 
+        <strong><?= $monthlyOT; ?></strong>
+    </p>
 
 </div>
 
@@ -289,8 +469,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
 </div>
                         <div class="col-md-6 d-flex gap-2">   
-                        <button class="btn btn-success" type="submit" name="action" value="time_in">Time In</button>
-                        <button class="btn btn-danger" type="submit" name="action" value="time_out">Time Out</button>
+                            <button class="btn btn-success"
+                                    type="submit"
+                                    name="action"
+                                    value="time_in"
+                                    <?= ($timeInToday) ? 'disabled' : ''; ?>>
+                                    Time In
+                                </button>
+
+                            <button class="btn btn-danger"
+                                    type="submit"
+                                    name="action"
+                                    value="time_out"
+                                    <?= (!$timeInToday || $timeOutToday) ? 'disabled' : ''; ?>>
+                                    Time Out
+                            </button>
                         </div>
                     </form>
                 </div>

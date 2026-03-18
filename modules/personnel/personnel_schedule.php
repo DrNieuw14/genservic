@@ -21,7 +21,7 @@ $user = $res->fetch_assoc();
 // GET SCHEDULE
 $stmt2 = $conn->prepare("
     SELECT * FROM work_schedule
-    WHERE user_id = ?
+    WHERE personnel_id = ?
     ORDER BY schedule_date ASC
 ");
 $stmt2->bind_param("i", $id);
