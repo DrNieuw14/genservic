@@ -27,6 +27,15 @@ if(isset($_GET['edit_id'])){
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <style>
+.table td, .table th {
+    vertical-align: middle;
+}
+
+tr:hover {
+    background-color: #f1f3f5;
+}
+</style>
 <meta charset="UTF-8">
 <title>Work Scheduling</title>
 
@@ -171,6 +180,29 @@ foreach($days as $day){
 </div>
 
 <div class="card-body">
+
+<div class="card-body">
+
+<!-- 🔍 SEARCH BAR -->
+<div class="row mb-3">
+    
+    <div class="col-md-6">
+        <input type="text" id="searchInput" class="form-control" placeholder="🔍 Search personnel, area, shift...">
+    </div>
+
+    <div class="col-md-3">
+        <select id="filterShift" class="form-control">
+            <option value="">All Shifts</option>
+            <option value="Morning">Morning</option>
+            <option value="2nd Shift">2nd Shift</option>
+            <option value="3rd Shift">3rd Shift</option>
+            <option value="REST">REST</option>
+        </select>
+    </div>
+
+</div>
+
+<div class="table-responsive">
 
 <div class="table-responsive">
 
@@ -560,11 +592,83 @@ document.getElementById("time_out").addEventListener("change", function(){
     }
 
 });
+</script>
 
+<script>
+document.getElementById("searchInput").addEventListener("keyup", function(){
 
+    let value = this.value.toLowerCase();
+    let rows = document.querySelectorAll("tbody tr");
+
+    let showGroup = false;
+
+    rows.forEach(row => {
+
+        let text = row.innerText.toLowerCase();
+
+        // detect header row (name row)
+        let isHeader = row.querySelector("a") !== null;
+
+        if(isHeader){
+            if(text.includes(value)){
+                row.style.display = "";
+                showGroup = true;
+            } else {
+                row.style.display = "none";
+                showGroup = false;
+            }
+        } else {
+            if(text.includes(value) || showGroup){
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        }
+
+    });
+
+});
 </script>
 
 
+<script>
+document.getElementById("filterShift").addEventListener("change", function(){
+
+    let filterValue = this.value.toLowerCase();
+    let searchValue = document.getElementById("searchInput").value.toLowerCase();
+
+    let rows = document.querySelectorAll("tbody tr");
+
+    let showGroup = false;
+
+    rows.forEach(row => {
+
+        let text = row.innerText.toLowerCase();
+        let isHeader = row.querySelector("a") !== null;
+
+        let matchSearch = text.includes(searchValue);
+        let matchFilter = filterValue === "" || text.includes(filterValue);
+
+        if(isHeader){
+            if(matchSearch && matchFilter){
+                row.style.display = "";
+                showGroup = true;
+            } else {
+                row.style.display = "none";
+                showGroup = false;
+            }
+        } else {
+            if((matchSearch && matchFilter) || showGroup){
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        }
+
+    });
+
+});
+</script>
 
 
 </html>
