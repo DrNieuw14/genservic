@@ -27,21 +27,31 @@ if(isset($_POST['save'])){
     $personnel_id = $_POST['personnel_id'];
     $areas = $_POST['assigned_area'] ?? [];
 
+    if(empty($areas)){
+        header("Location: assign_area.php");
+        exit();
+    }
+
     foreach($areas as $area){
 
-    $check = $conn->prepare("SELECT * FROM personnel_areas WHERE personnel_id=? AND area_name=?");
-    $check->bind_param("is",$personnel_id,$area);
-    $check->execute();
-    $result_check = $check->get_result();
+        $check = $conn->prepare("
+            SELECT 1 FROM personnel_areas 
+            WHERE personnel_id=? AND area_name=? LIMIT 1
+        ");
+        $check->bind_param("is",$personnel_id,$area);
+        $check->execute();
+        $result_check = $check->get_result();
 
-    if($result_check->num_rows == 0){
+        if($result_check->num_rows == 0){
 
-        $stmt = $conn->prepare("INSERT INTO personnel_areas (personnel_id, area_name) VALUES (?, ?)");
-        $stmt->bind_param("is",$personnel_id,$area);
-        $stmt->execute();
-
+            $stmt = $conn->prepare("
+                INSERT INTO personnel_areas (personnel_id, area_name) 
+                VALUES (?, ?)
+            ");
+            $stmt->bind_param("is",$personnel_id,$area);
+            $stmt->execute();
+        }
     }
-}
 
     header("Location: assign_area.php");
     exit();
@@ -73,8 +83,11 @@ SELECT
     personnel.department,
     COALESCE(GROUP_CONCAT(personnel_areas.area_name SEPARATOR ', '), '') AS assigned_area
 FROM personnel
-LEFT JOIN users ON personnel.user_id = users.id
+INNER JOIN users ON personnel.user_id = users.id
 LEFT JOIN personnel_areas ON personnel.id = personnel_areas.personnel_id
+WHERE users.first_name IS NOT NULL 
+AND users.first_name != ''
+AND users.status = 'approved'
 GROUP BY 
     personnel.id,
     users.first_name,
@@ -185,15 +198,31 @@ $area_list = $conn->query("SELECT area_name FROM areas ORDER BY area_name ASC");
 <td><?= $row['id'] ?></td>
 
 <td>
-<?= htmlspecialchars(
-$row['first_name'] . ' ' .
-($row['middle_initial'] ? $row['middle_initial'] . '. ' : '') .
-$row['last_name']
-) ?>
+<?php
+$fullname = trim(
+    ($row['first_name'] ?? '') . ' ' .
+    ($row['middle_initial'] ? $row['middle_initial'] . '. ' : '') .
+    ($row['last_name'] ?? '')
+);
+
+echo !empty($fullname)
+    ? htmlspecialchars($fullname)
+    : "<span class='text-muted'>No Name</span>";
+?>
 </td>
 
 <td>
-<span class="badge bg-info">
+<?php
+$genderClass = "secondary";
+
+if ($row['gender'] === "Male") {
+    $genderClass = "primary"; // blue
+} elseif ($row['gender'] === "Female") {
+    $genderClass = "dark"; // dark gray
+}
+?>
+
+<span class="badge bg-<?= $genderClass ?>">
 <?= htmlspecialchars($row['gender']) ?>
 </span>
 </td>
@@ -236,6 +265,12 @@ foreach($assigned_areas as $area){
 
 <td>
 
+<?php
+$assignedArray = !empty($row['assigned_area']) 
+    ? array_map('trim', explode(",", $row['assigned_area'])) 
+    : [];
+?>
+
 <select name="assigned_area[]" class="form-select form-select-sm" multiple>
 
 <?php
@@ -244,7 +279,7 @@ while($area = $area_list->fetch_assoc()):
 ?>
 
 <option value="<?= htmlspecialchars($area['area_name']) ?>"
-<?= !empty($row['assigned_area']) && strpos($row['assigned_area'], $area['area_name']) !== false ? 'selected' : '' ?>>
+<?= in_array($area['area_name'], $assignedArray) ? 'selected' : '' ?>>
 <?= htmlspecialchars($area['area_name']) ?>
 </option>
 

@@ -1,69 +1,99 @@
 <?php
 include("config/database.php");
 
+$error = "";
+$success = "";
+
 if(isset($_POST['register'])){
 
-$first = $_POST['first_name'];
-$middle = $_POST['middle_initial'];
-$last = $_POST['last_name'];
+$first = trim($_POST['first_name']);
+$middle = trim($_POST['middle_initial']);
+$last = trim($_POST['last_name']);
+
+
+
 $birth = $_POST['birthdate'];
 $gender = $_POST['gender'];
 
-$username = $_POST['username'];
+$username = trim($_POST['username']);
+$first = ucwords(strtolower($first));
+$middle = strtoupper($middle);
+$last = ucwords(strtolower($last));
+
+if(strtolower($first) === strtolower($last)){
+    $error = "First name and last name cannot be the same.";
+}
+
 $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 $role = $_POST['role'];
 
-$fullname = $first." ".$middle." ".$last;
+$fullname = trim($first . " " . $middle . " " . $last);
 
-$check = mysqli_query($conn,"SELECT * FROM users WHERE username='$username'");
+$stmt_check = $conn->prepare("SELECT id FROM users WHERE username=?");
+$stmt_check->bind_param("s", $username);
+$stmt_check->execute();
+$result_check = $stmt_check->get_result();
+$stmt_check->close();
 
-if(mysqli_num_rows($check) > 0){
-
-echo "<p style='color:red'>Username already exists</p>";
-
-}else{
-
-// ✅ INSERT INTO USERS FIRST
-$stmt = $conn->prepare("INSERT INTO users 
-(first_name, middle_initial, last_name, birthdate, gender, fullname, username, password, role, status)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
-
-$stmt->bind_param("sssssssss",
-    $first,
-    $middle,
-    $last,
-    $birth,
-    $gender,
-    $fullname,
-    $username,
-    $password,
-    $role
-);
-
-if(!$stmt->execute()){
-    die("User Error: " . $stmt->error);
+if(empty($error) && $result_check->num_rows > 0){
+    $error = "Username already exists";
 }
 
-// ✅ GET USER ID (VERY IMPORTANT)
-$user_id = $conn->insert_id;
+if(empty($error)){
 
-// ✅ INSERT INTO PERSONNEL (LINKED)
-$employee_id = 'UTL' . rand(100,999);
+    $conn->begin_transaction();
 
-$stmt2 = $conn->prepare("INSERT INTO personnel 
-(employee_id, fullname, position, department, user_id)
-VALUES (?, ?, 'Utility Staff', 'Maintenance', ?)");
+    try {
 
-$stmt2->bind_param("ssi", $employee_id, $fullname, $user_id);
+        // ✅ INSERT USER
+        $stmt = $conn->prepare("INSERT INTO users 
+        (first_name, middle_initial, last_name, birthdate, gender, fullname, username, password, role, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
 
-if(!$stmt2->execute()){
-    die("Personnel Error: " . $stmt2->error);
+        $stmt->bind_param("sssssssss",
+            $first,
+            $middle,
+            $last,
+            $birth,
+            $gender,
+            $fullname,
+            $username,
+            $password,
+            $role
+        );
+
+        if(!$stmt->execute()){
+            throw new Exception("User Error: " . $stmt->error);
+        }
+
+        // ✅ GET USER ID
+        $user_id = $conn->insert_id;
+
+        // ✅ INSERT PERSONNEL
+        $employee_id = 'UTL' . date('Ymd') . rand(100,999);
+
+        $stmt2 = $conn->prepare("INSERT INTO personnel 
+        (employee_id, fullname, position, department, user_id)
+        VALUES (?, ?, 'Utility Staff', 'Maintenance', ?)");
+
+        $stmt2->bind_param("ssi", $employee_id, $fullname, $user_id);
+
+        if(!$stmt2->execute()){
+            throw new Exception("Personnel Error: " . $stmt2->error);
+        }
+
+        // ✅ COMMIT ONLY AFTER BOTH SUCCESS
+        $conn->commit();
+
+        $success = "Account created successfully. Waiting for supervisor approval.";
+
+    } catch (Exception $e) {
+
+        // ❌ ROLLBACK EVERYTHING
+        $conn->rollback();
+        $error = $e->getMessage();
+    }
 }
-
-echo "<p style='color:green'>Account created successfully. Waiting for supervisor approval.</p>";
-
-}
-
 }
 ?>
 
@@ -81,6 +111,14 @@ echo "<p style='color:green'>Account created successfully. Waiting for superviso
 <body class="container mt-4">
 
 <h2>Create Account</h2>
+
+<?php if(!empty($error)): ?>
+<div class="alert alert-danger"><?= $error ?></div>
+<?php endif; ?>
+
+<?php if(!empty($success)): ?>
+<div class="alert alert-success"><?= $success ?></div>
+<?php endif; ?>
 
 <form method="POST">
 
