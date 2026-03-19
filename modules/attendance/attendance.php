@@ -345,7 +345,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <form method="post" class="row g-3 align-items-end">
+                    <form id="attendanceForm" class="row g-3 align-items-end">
                         <div class="col-md-6">
 
 <?php if (!$isPersonnel): ?>
@@ -470,17 +470,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 </div>
                         <div class="col-md-6 d-flex gap-2">   
                             <button class="btn btn-success"
-                                    type="submit"
-                                    name="action"
-                                    value="time_in"
+                                    type="button"
+                                    id="timeInBtn"
                                     <?= ($timeInToday) ? 'disabled' : ''; ?>>
                                     Time In
                                 </button>
 
                             <button class="btn btn-danger"
-                                    type="submit"
-                                    name="action"
-                                    value="time_out"
+                                    type="button"
+                                    id="timeOutBtn"
                                     <?= (!$timeInToday || $timeOutToday) ? 'disabled' : ''; ?>>
                                     Time Out
                             </button>
@@ -518,5 +516,36 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 </script>
+
+<script>
+    function sendAttendance(action) {
+        const formData = new FormData();
+
+        formData.append("action", action);
+        formData.append("user_id", "<?= $userId ?>");
+
+        fetch("attendance.php", {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.text())
+        .then(() => {
+            // 🔥 for now (safe version)
+            location.reload();
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    // BUTTON EVENTS
+    document.getElementById("timeInBtn").addEventListener("click", function() {
+        sendAttendance("time_in");
+    });
+
+    document.getElementById("timeOutBtn").addEventListener("click", function() {
+        sendAttendance("time_out");
+    });
+</script>
+
+
 </body>
 </html>

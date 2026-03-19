@@ -23,9 +23,42 @@ echo "<p style='color:red'>Username already exists</p>";
 
 }else{
 
-$query = "INSERT INTO users(first_name,middle_initial,last_name,birthdate,gender,fullname,username,password,role,status)
-VALUES('$first','$middle','$last','$birth','$gender','$fullname','$username','$password','$role','pending')";
-mysqli_query($conn,$query);
+// ✅ INSERT INTO USERS FIRST
+$stmt = $conn->prepare("INSERT INTO users 
+(first_name, middle_initial, last_name, birthdate, gender, fullname, username, password, role, status)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')");
+
+$stmt->bind_param("sssssssss",
+    $first,
+    $middle,
+    $last,
+    $birth,
+    $gender,
+    $fullname,
+    $username,
+    $password,
+    $role
+);
+
+if(!$stmt->execute()){
+    die("User Error: " . $stmt->error);
+}
+
+// ✅ GET USER ID (VERY IMPORTANT)
+$user_id = $conn->insert_id;
+
+// ✅ INSERT INTO PERSONNEL (LINKED)
+$employee_id = 'UTL' . rand(100,999);
+
+$stmt2 = $conn->prepare("INSERT INTO personnel 
+(employee_id, fullname, position, department, user_id)
+VALUES (?, ?, 'Utility Staff', 'Maintenance', ?)");
+
+$stmt2->bind_param("ssi", $employee_id, $fullname, $user_id);
+
+if(!$stmt2->execute()){
+    die("Personnel Error: " . $stmt2->error);
+}
 
 echo "<p style='color:green'>Account created successfully. Waiting for supervisor approval.</p>";
 
