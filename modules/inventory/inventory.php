@@ -1,91 +1,192 @@
 <?php
-session_start();
+require_once '../../config/database.php';
+require_once '../../config/auth.php';
+require_once '../../config/layout.php';
 
-if($_SESSION['role'] != 'admin'){
-echo "Access Denied";
-exit();
+require_role(['admin','supervisor']); // ✅ FIXED ACCESS
+
+// ADD ITEM
+if(isset($_POST['add_item'])){
+
+    $item = trim($_POST['item_name']);
+    $item = htmlspecialchars($item, ENT_QUOTES);
+    $qty = (int) $_POST['quantity'];
+
+    if(empty($item) || $qty < 0){
+        $error = "Invalid input";
+    } else {
+
+
+                $stmt = $conn->prepare("SELECT id FROM inventory_items WHERE item_name=?");
+        $stmt->bind_param("s", $item);
+        $stmt->execute();
+        $exists = $stmt->get_result()->fetch_assoc();
+
+        if($exists){
+            $error = "Item already exists";
+        } else {
+
+        $stmt = $conn->prepare("
+            INSERT INTO inventory_items (item_name, quantity)
+            VALUES (?, ?)
+        ");
+        $stmt->bind_param("si", $item, $qty);
+        $stmt->execute();
+
+        header("Location: inventory.php?success=1");
+        exit();
+    }
 }
-?>
-<?php
-include("../../config/database.php");
+}
+// FETCH ITEMS
+$result = $conn->query("
+    SELECT * FROM inventory_items
+    ORDER BY item_name ASC
+");
 ?>
 
 <!DOCTYPE html>
 <html>
-
 <head>
+    <style>
+    .table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    }
+
+    .card {
+    border-radius: 12px;
+}
+    </style>
 
 <title>Inventory Management</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 
-<body class="container mt-4">
+<body>
 
-<h2>Inventory Management</h2>
+<div class="container-fluid app-layout">
+<div class="row">
 
-<form method="POST" class="mb-4">
+<?php render_sidebar($_SESSION['role']); ?>
 
-<input type="text" name="item_name" placeholder="Item Name" class="form-control mb-2">
+<main class="col-lg-10 col-md-9 p-4">
 
-<input type="number" name="quantity" placeholder="Quantity" class="form-control mb-2">
+<?php render_topbar(); ?>
 
-<button name="add_item" class="btn btn-success">Add Item</button>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">📦 Inventory Management</h3>
+</div>
+
+<!-- ALERTS -->
+<?php if(isset($error)): ?>
+<div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+<?php endif; ?>
+
+<?php if(isset($_GET['success'])): ?>
+<div class="alert alert-success">Item added successfully</div>
+<?php endif; ?>
+
+<!-- ADD ITEM FORM -->
+<div class="card shadow-sm border-0 mb-4">
+<div class="card-body">
+
+<h6 class="text-muted mb-3">Add New Item</h6>
+
+<form method="POST" class="row g-2">
+
+<div class="col-md-5">
+<input type="text" name="item_name" placeholder="Enter item name" class="form-control" required>
+</div>
+
+<div class="col-md-3">
+<input type="number" name="quantity" placeholder="Enter quantity" class="form-control" required min="0">
+
+<small class="text-muted">
+Tip: Items below 5 will show as Low Stock
+</small>
+</div>
+
+<div class="col-md-2">
+<button name="add_item" class="btn btn-success w-100">+ Add Item</button>
+</div>
 
 </form>
 
-<h4>Inventory List</h4>
+</div>
+</div>
 
-<table class="table table-bordered">
+<!-- INVENTORY TABLE -->
+<div class="card shadow-sm border-0">
+<div class="card-header bg-white">
+<h5 class="mb-0">Inventory List</h5>
+</div>
 
+<div class="card-body">
+
+<table class="table table-hover align-middle">
+
+<thead class="table-light">
 <tr>
 <th>ID</th>
 <th>Item Name</th>
 <th>Quantity</th>
 <th>Status</th>
 </tr>
+</thead>
+
+<tbody>
+
+<?php if($result->num_rows > 0): ?>
+
+<?php while($row = $result->fetch_assoc()): ?>
 
 <?php
+$status = "Available";
+$color = "success";
+$icon = "✔";
 
-$query = "SELECT * FROM inventory";
-$result = mysqli_query($conn,$query);
-
-while($row = mysqli_fetch_assoc($result)){
-
-$status = ($row['quantity'] < 5) ? "Low Stock" : "Available";
-
-echo "<tr>";
-echo "<td>".$row['id']."</td>";
-echo "<td>".$row['item_name']."</td>";
-echo "<td>".$row['quantity']."</td>";
-echo "<td>".$status."</td>";
-echo "</tr>";
-
+if($row['quantity'] <= 0){
+    $status = "Out of Stock";
+    $color = "danger";
+    $icon = "❌";
 }
-
+elseif($row['quantity'] < 5){
+    $status = "Low Stock";
+    $color = "warning";
+    $icon = "⚠";
+}
 ?>
+
+<tr>
+<td><?= $row['id'] ?></td>
+<td><?= htmlspecialchars($row['item_name']) ?></td>
+<td><strong><?= $row['quantity'] ?></strong></td>
+<td>
+
+<span class="badge bg-<?= $color ?>">
+<?= $icon ?> <?= $status ?>
+</span>
+
+</td>
+</tr>
+
+<?php endwhile; ?>
+<?php else: ?>
+<tr>
+<td colspan="4" class="text-center text-muted">No items available</td>
+</tr>
+<?php endif; ?>
+
+</tbody>
 
 </table>
 
-<a href="../../dashboard.php" class="btn btn-secondary">Back to Dashboard</a>
+</div>
+</div>
+
+</main>
+</div>
+</div>
 
 </body>
-
 </html>
-
-<?php
-
-if(isset($_POST['add_item'])){
-
-$item = $_POST['item_name'];
-$qty = $_POST['quantity'];
-
-$query = "INSERT INTO inventory(item_name,quantity) VALUES('$item','$qty')";
-mysqli_query($conn,$query);
-
-echo "<p class='text-success'>Item Added Successfully</p>";
-
-}
-
-?>
