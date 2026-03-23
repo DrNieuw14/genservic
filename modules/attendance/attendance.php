@@ -334,7 +334,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
 <div class="container-fluid app-layout">
     <div class="row">
         <?php render_sidebar($_SESSION['role']); ?>
+        
         <main class="col-lg-10 col-md-9 p-4">
+            
+        <?php render_topbar(); ?>   <!-- ✅ ADD THIS LINE -->
+
             <h3 class="mb-3">Attendance Monitoring</h3>
 
             <?php if ($feedback['message'] !== ''): ?>

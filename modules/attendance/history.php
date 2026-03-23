@@ -5,7 +5,8 @@ require_once __DIR__ . '/../../config/layout.php';
 
 require_role(['admin', 'supervisor', 'personnel']);
 
-$dateFilter = clean_input($_GET['date'] ?? '');
+$startDate = clean_input($_GET['start_date'] ?? '');
+$endDate = clean_input($_GET['end_date'] ?? '');
 $nameSearch = clean_input($_GET['search'] ?? '');
 
 $sql = "
@@ -14,13 +15,23 @@ FROM attendance a
 JOIN personnel p ON p.id = a.personnel_id
 WHERE 1 = 1
 ";
+
 $params = [];
 $types = '';
 
-if ($dateFilter !== '') {
-    $sql .= ' AND a.date = ?';
-    $params[] = $dateFilter;
-    $types .= 's';
+$isPersonnel = ($_SESSION['role'] === 'personnel');
+
+if ($isPersonnel) {
+    $sql .= ' AND a.personnel_id = ?';
+    $params[] = $_SESSION['personnel_id'];
+    $types .= 'i';
+}
+
+if (!empty($startDate) && !empty($endDate)) {
+    $sql .= ' AND a.date BETWEEN ? AND ?';
+    $params[] = $startDate;
+    $params[] = $endDate;
+    $types .= 'ss';
 }
 
 if ($nameSearch !== '') {
@@ -43,6 +54,7 @@ $result = $stmt->get_result();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Attendance History | GenServis</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="<?= htmlspecialchars(app_url('assets/css/app.css'), ENT_QUOTES, 'UTF-8'); ?>">
 </head>
@@ -51,21 +63,48 @@ $result = $stmt->get_result();
     <div class="row">
         <?php render_sidebar($_SESSION['role']); ?>
         <main class="col-lg-10 col-md-9 p-4">
-            <h3 class="mb-3">Attendance History</h3>
 
+            <?php render_topbar(); ?>  <!-- ✅ ADD THIS -->
+
+            <h3 class="mb-3">Attendance History</h3>
+                       
+           <?php if ($_SESSION['role'] === 'personnel'): ?>
+                <p class="text-muted">Showing your attendance records only.</p>
+            <?php endif; ?>
+
+           <?php if ($_SESSION['role'] !== 'personnel'): ?>
             <form method="get" class="row g-2 mb-3">
+
                 <div class="col-md-3">
                     <label class="form-label">Date</label>
-                    <input type="date" name="date" class="form-control" value="<?= htmlspecialchars($dateFilter, ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <input type="text" id="dateRange" class="form-control"value="<?= (!empty($startDate) && !empty($endDate)) ? $startDate . ' to ' . $endDate : '' ?>"placeholder="Select Date Range">
+
+                    <input type="hidden" name="start_date" id="start_date"
+                    value="<?= htmlspecialchars($startDate ?? '', ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <input type="hidden" name="end_date" id="end_date"
+                    value="<?= htmlspecialchars($endDate ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
+
                 <div class="col-md-4">
                     <label class="form-label">Personnel Name</label>
-                    <input type="text" name="search" class="form-control" placeholder="Search by name" value="<?= htmlspecialchars($nameSearch, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="text" name="search" class="form-control" placeholder="Search by name"
+                    value="<?= htmlspecialchars($nameSearch, ENT_QUOTES, 'UTF-8'); ?>">
                 </div>
+
                 <div class="col-md-2 d-flex align-items-end">
                     <button class="btn btn-primary w-100" type="submit">Filter</button>
                 </div>
+                
             </form>
+            <?php endif; ?>
+
+            <?php if (!empty($startDate) && !empty($endDate)): ?>
+                <p class="text-muted">
+                    Showing records from <strong><?= $startDate ?></strong> to <strong><?= $endDate ?></strong>
+                </p>
+            <?php endif; ?>
 
             <div class="table-responsive card border-0 shadow-sm">
                 <table class="table table-striped table-hover mb-0">
@@ -111,5 +150,30 @@ $result = $stmt->get_result();
     </div>
 </div>
 <script src="<?= htmlspecialchars(app_url('assets/js/app.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<script>
+const rangeInput = document.getElementById("dateRange");
+
+if (rangeInput) {
+    flatpickr("#dateRange", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+
+        onChange: function(selectedDates) {
+            if (selectedDates.length === 2) {
+
+                let start = selectedDates[0].toISOString().split('T')[0];
+                let end = selectedDates[1].toISOString().split('T')[0];
+
+                document.getElementById("start_date").value = start;
+                document.getElementById("end_date").value = end;
+            }
+        }
+    });
+}
+</script>
+
 </body>
 </html>

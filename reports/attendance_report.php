@@ -3,7 +3,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/layout.php';
 
-require_role(['admin', 'supervisor']);
+require_role(['admin', 'supervisor', 'personnel']);
 
 $dateFilter = clean_input($_GET['date'] ?? '');
 $nameSearch = clean_input($_GET['search'] ?? '');
@@ -11,6 +11,15 @@ $nameSearch = clean_input($_GET['search'] ?? '');
 $sql = "SELECT a.id, p.fullname, a.date, a.time_in, a.time_out, a.status FROM attendance a JOIN personnel p ON p.id = a.personnel_id WHERE 1=1";
 $params = [];
 $types = '';
+
+$isPersonnel = ($_SESSION['role'] === 'personnel');
+
+if ($isPersonnel) {
+    $sql .= ' AND a.personnel_id = ?';
+    $params[] = $_SESSION['personnel_id'];
+    $types .= 'i';
+}
+
 if ($dateFilter !== '') {
     $sql .= ' AND a.date = ?';
     $params[] = $dateFilter;
@@ -52,17 +61,19 @@ $queryString = http_build_query(['date' => $dateFilter, 'search' => $nameSearch]
                 </div>
             </div>
 
-            <form method="get" class="row g-2 mb-3">
-                <div class="col-md-3">
-                    <input type="date" class="form-control" name="date" value="<?= htmlspecialchars($dateFilter, ENT_QUOTES, 'UTF-8'); ?>">
-                </div>
-                <div class="col-md-4">
-                    <input type="text" class="form-control" name="search" placeholder="Search personnel" value="<?= htmlspecialchars($nameSearch, ENT_QUOTES, 'UTF-8'); ?>">
-                </div>
-                <div class="col-md-2">
-                    <button type="submit" class="btn btn-primary w-100">Apply</button>
-                </div>
-            </form>
+            <?php if ($_SESSION['role'] !== 'personnel'): ?>
+                <form method="get" class="row g-2 mb-3">
+                    <div class="col-md-3">
+                        <input type="date" class="form-control" name="date" value="<?= htmlspecialchars($dateFilter, ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="search" placeholder="Search personnel" value="<?= htmlspecialchars($nameSearch, ENT_QUOTES, 'UTF-8'); ?>">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Apply</button>
+                    </div>
+                </form>
+                <?php endif; ?>
 
             <div class="table-responsive card border-0 shadow-sm">
                 <table class="table table-bordered table-striped mb-0">
