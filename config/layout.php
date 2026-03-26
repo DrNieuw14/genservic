@@ -37,14 +37,15 @@ function render_topbar(): void
 ========================= */
 function render_sidebar(string $role): void
 {
+    global $conn; // ✅ ADD THIS 
 
     $pendingCount = 0;
 
-    if (isset($conn)) {
+    if ($conn instanceof mysqli) {
         $result = $conn->query("SELECT COUNT(*) AS total FROM users WHERE status='pending'");
-    if($result){
-        $row = $result->fetch_assoc();
-        $pendingCount = $row['total'];
+        if ($result) {
+            $row = $result->fetch_assoc();
+            $pendingCount = $row['total'];
     }
 }
 
@@ -107,15 +108,26 @@ function render_sidebar(string $role): void
                 <?php endif; ?>
 
                 <?php if ($role === 'admin' || $role === 'supervisor'): ?>
-                    <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/inventory/inventory.php'), ENT_QUOTES, 'UTF-8'); ?>">
-                        Inventory
+
+                    <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/inventory/inventory.php')); ?>">
+                        <i class="bi bi-box"></i> Inventory
                     </a>
+
+                    <a class="nav-link ms-3" href="<?= htmlspecialchars(app_url('modules/inventory/categories/index.php')); ?>">
+                        <i class="bi bi-tags"></i> Categories
+                    </a>
+
+                    <a class="nav-link ms-3" href="<?= htmlspecialchars(app_url('modules/inventory/logs.php')); ?>">
+                        <i class="bi bi-clock-history"></i> Logs
+                    </a>
+
                 <?php endif; ?>
 
                 <?php if ($role === 'personnel'): ?>
                     <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/inventory/request.php'), ENT_QUOTES, 'UTF-8'); ?>">
                         Request Materials
                     </a>
+
                 <?php endif; ?>
 
                 <a class="nav-link" href="<?= htmlspecialchars(app_url('logout.php'), ENT_QUOTES, 'UTF-8'); ?>">Logout</a>

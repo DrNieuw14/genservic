@@ -9,58 +9,109 @@ require_role(['admin','supervisor']); // ✅ FIXED ACCESS
 if(isset($_POST['add_item'])){
 
     $item = trim($_POST['item_name']);
-    $item = htmlspecialchars($item, ENT_QUOTES);
+    $item = strtolower($item); // optional (prevents duplicates like "Mop" vs "mop")
     $qty = (int) $_POST['quantity'];
+    $category_id = (int) $_POST['category_id'];
 
-    if(empty($item) || $qty < 0){
-        $error = "Invalid input";
-    } else {
+   if(empty($item) || $qty < 0 || $category_id <= 0){
+    $error = "Invalid input";
+} else {
 
-
-                $stmt = $conn->prepare("SELECT id FROM inventory_items WHERE item_name=?");
-        $stmt->bind_param("s", $item);
+        $stmt = $conn->prepare("SELECT id FROM inventory_items WHERE item_name = ? AND category_id = ?");
+        $stmt->bind_param("si", $item, $category_id);
         $stmt->execute();
         $exists = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
 
         if($exists){
             $error = "Item already exists";
         } else {
 
-        $stmt = $conn->prepare("
-            INSERT INTO inventory_items (item_name, quantity)
-            VALUES (?, ?)
-        ");
-        $stmt->bind_param("si", $item, $qty);
-        $stmt->execute();
+            $stmt = $conn->prepare("
+                INSERT INTO inventory_items (item_name, quantity, category_id)
+                VALUES (?, ?, ?)
+            ");
+            $stmt->bind_param("sii", $item, $qty, $category_id);
+            
+            $stmt->execute();
+            
+            $item_id = $conn->insert_id; // ✅ VERY IMPORTANT
 
-        header("Location: inventory.php?success=1");
-        exit();
+            $stmt->close();
+
+            // ✅ LOG SYSTEM
+            $user_id = $_SESSION['user_id'] ?? 0;
+
+            $log = $conn->prepare("
+                INSERT INTO inventory_logs (item_id, action, quantity, user_id)
+                VALUES (?, 'added', ?, ?)
+            ");
+
+            $log->bind_param("iii", $item_id, $qty, $user_id);
+            $log->execute();
+            $log->close();
+
+            $redirect = "inventory.php?success=1";
+
+            if(isset($_GET['category'])){
+                $redirect .= "&category=" . (int)$_GET['category'];
+            }
+
+            header("Location: $redirect");
+            exit();
+        }
     }
 }
+
+// FETCH CATEGORIES (ONCE)
+$categories = [];
+
+$res = $conn->query("SELECT * FROM inventory_categories");
+
+while($row = $res->fetch_assoc()){
+    $categories[] = $row;
 }
+
 // FETCH ITEMS
+$where = "";
+
+if(isset($_GET['category']) && $_GET['category'] != ""){
+    $cat_id = (int) $_GET['category'];
+    $where = "WHERE i.category_id = $cat_id";
+}
+
 $result = $conn->query("
-    SELECT * FROM inventory_items
-    ORDER BY item_name ASC
+    SELECT i.*, c.category_name 
+    FROM inventory_items i
+    LEFT JOIN inventory_categories c ON i.category_id = c.id
+    $where
+    ORDER BY i.item_name ASC
 ");
+
 ?>
 
 <!DOCTYPE html>
 <html>
-<head>
-    <style>
-    .table-hover tbody tr:hover {
-    background-color: #f8f9fa;
-    }
+    <head>
 
-    .card {
-    border-radius: 12px;
-}
-    </style>
+        <title>Inventory Management</title>
 
-<title>Inventory Management</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-</head>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+        <!-- ✅ THIS IS THE FIX -->
+        <link rel="stylesheet" href="<?= htmlspecialchars(app_url('assets/css/app.css'), ENT_QUOTES, 'UTF-8'); ?>">
+
+        <style>
+            .table-hover tbody tr:hover {
+                background-color: #f8f9fa;
+            }
+
+            .card {
+                border-radius: 12px;
+            }
+        </style>
+
+    </head>
 
 <body>
 
@@ -79,40 +130,89 @@ $result = $conn->query("
 
 <!-- ALERTS -->
 <?php if(isset($error)): ?>
-<div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
+    <div class="alert alert-danger"><?= htmlspecialchars($error) ?></div>
 <?php endif; ?>
 
 <?php if(isset($_GET['success'])): ?>
-<div class="alert alert-success">Item added successfully</div>
+    <div class="alert alert-success">Item added successfully</div>
 <?php endif; ?>
+
+<?php if(isset($_GET['updated'])): ?>
+    <div class="alert alert-info">Item updated successfully</div>
+<?php endif; ?>
+
+<?php if(isset($_GET['deleted'])): ?>
+    <div class="alert alert-warning">Item deleted</div>
+<?php endif; ?>
+
+<form method="GET" class="mb-3">
+    <div class="row g-2">
+
+        <div class="col-md-4">
+            <select name="category" class="form-control" onchange="this.form.submit()">
+                <option value="">All Categories</option>
+                <?php
+                    foreach($categories as $c){
+                        $selected = (isset($_GET['category']) && $_GET['category'] == $c['id']) ? 'selected' : '';
+                        echo "<option value='{$c['id']}' $selected>{$c['category_name']}</option>";
+                    }
+                ?>
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <a href="inventory.php" class="btn btn-secondary w-100">Reset</a>
+        </div>
+
+    </div>
+</form>
 
 <!-- ADD ITEM FORM -->
 <div class="card shadow-sm border-0 mb-4">
-<div class="card-body">
+    <div class="card-body">
 
-<h6 class="text-muted mb-3">Add New Item</h6>
+        <h6 class="text-muted mb-3">Add New Item</h6>
 
-<form method="POST" class="row g-2">
+        <form method="POST" class="row g-2">
 
-<div class="col-md-5">
-<input type="text" name="item_name" placeholder="Enter item name" class="form-control" required>
-</div>
+            <div class="col-md-4">
+                <input type="text" name="item_name" placeholder="Enter item name" class="form-control" required>
+            </div>
 
-<div class="col-md-3">
-<input type="number" name="quantity" placeholder="Enter quantity" class="form-control" required min="0">
+            <div class="col-md-3">
+                <select name="category_id" class="form-control" required>
+                    <option value="">-- Select Category --</option>
 
-<small class="text-muted">
-Tip: Items below 5 will show as Low Stock
-</small>
-</div>
+                    <?php
+                    foreach($categories as $c){
 
-<div class="col-md-2">
-<button name="add_item" class="btn btn-success w-100">+ Add Item</button>
-</div>
+                        $selected = '';
 
-</form>
+                        if(isset($_POST['category_id']) && $_POST['category_id'] == $c['id']){
+                            $selected = 'selected';
+                        }
 
-</div>
+                        echo "<option value='{$c['id']}' $selected>{$c['category_name']}</option>";
+                    }
+                    ?>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <input type="number" name="quantity" placeholder="Enter quantity" class="form-control" required min="0">
+
+                <small class="text-muted d-block mt-1">
+                    Tip: Items below 5 will show as Low Stock
+                </small>
+            </div>
+
+            <div class="col-md-2">
+                <button type="submit" name="add_item" class="btn btn-success w-100">
+                    + Add Item
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- INVENTORY TABLE -->
@@ -129,8 +229,10 @@ Tip: Items below 5 will show as Low Stock
 <tr>
 <th>ID</th>
 <th>Item Name</th>
+<th>Category</th>
 <th>Quantity</th>
 <th>Status</th>
+<th>Action</th>
 </tr>
 </thead>
 
@@ -140,41 +242,64 @@ Tip: Items below 5 will show as Low Stock
 
 <?php while($row = $result->fetch_assoc()): ?>
 
-<?php
-$status = "Available";
-$color = "success";
-$icon = "✔";
+    <?php
+    $status = "Available";
+    $color = "success";
+    $icon = "✔";
 
-if($row['quantity'] <= 0){
-    $status = "Out of Stock";
-    $color = "danger";
-    $icon = "❌";
-}
-elseif($row['quantity'] < 5){
-    $status = "Low Stock";
-    $color = "warning";
-    $icon = "⚠";
-}
-?>
+    if($row['quantity'] <= 0){
+        $status = "Out of Stock";
+        $color = "danger";
+        $icon = "❌";
+    }
+    elseif($row['quantity'] < 5){
+        $status = "Low Stock";
+        $color = "warning";
+        $icon = "⚠";
+    }
+    ?>
 
-<tr>
-<td><?= $row['id'] ?></td>
-<td><?= htmlspecialchars($row['item_name']) ?></td>
-<td><strong><?= $row['quantity'] ?></strong></td>
-<td>
+    <tr>
 
-<span class="badge bg-<?= $color ?>">
-<?= $icon ?> <?= $status ?>
-</span>
+        <td>
+            <?= $row['id'] ?>
+        </td>
 
-</td>
-</tr>
+        <td>
+            <?= htmlspecialchars($row['item_name']) ?>
+        </td>
+
+        <td>
+            <?= htmlspecialchars($row['category_name'] ?? 'Uncategorized') ?>
+        </td>
+        
+        <td>
+            <strong>
+                <?= $row['quantity'] ?>
+            </strong>
+        </td>
+
+        <td>
+            <span class="badge bg-<?= $color ?>">
+            <?= $icon ?> <?= $status ?>
+            </span>
+        </td>
+
+        <td>
+            <a href="edit_item.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-warning">Edit</a>
+            <a href="delete_item.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-danger"
+            onclick="return confirm('Delete this item?')">Delete</a>
+        </td>
+    </tr>
 
 <?php endwhile; ?>
+
 <?php else: ?>
+
 <tr>
-<td colspan="4" class="text-center text-muted">No items available</td>
+    <td colspan="6" class="text-center text-muted">No items available</td>
 </tr>
+
 <?php endif; ?>
 
 </tbody>
