@@ -1,3 +1,68 @@
+<!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <title>GenServis</title>
+
+            <!-- Bootstrap -->
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+            <style>
+                /* BODY BACKGROUND */
+                body {
+                    background-color: #f1f5f9;
+                }
+
+                /* SIDEBAR (GREEN THEME) */
+                .sidebar {
+                    background-color: #166534; /* dark green */
+                    min-height: 100vh;
+                }
+
+                /* SIDEBAR TITLE */
+                .sidebar h5 {
+                    color: #facc15; /* yellow like sample */
+                    font-weight: bold;
+                }
+
+                /* SIDEBAR LINKS */
+                .sidebar .nav-link {
+                    color: #d1fae5;
+                    padding: 8px;
+                    border-radius: 6px;
+                }
+
+                /* HOVER EFFECT */
+                .sidebar .nav-link:hover {
+                    background-color: #14532d;
+                    color: #ffffff;
+                }
+
+                /* ACTIVE MENU (OPTIONAL) */
+                .sidebar .nav-link.active {
+                    background-color: #14532d;
+                    color: white;
+                }
+
+                /* CARD STYLE */
+                .card {
+                    border-radius: 10px;
+                }
+
+                /* BUTTON STYLE (MATCH GREEN BUTTON) */
+                .btn-success {
+                    background-color: #166534;
+                    border-color: #166534;
+                }
+
+                .btn-success:hover {
+                    background-color: #14532d;
+                }
+            </style>
+        </head>
+
+<body>
+
 <?php
 require_once '../../config/database.php';
 require_once '../../config/auth.php';
@@ -5,108 +70,9 @@ require_once '../../config/layout.php';
 
 require_role(['admin','supervisor']);
 
-if(isset($_POST['approve'])){
 
-    $conn->begin_transaction();
 
-    try {
 
-        $id = $_POST['request_id'];
-
-        // 1. GET REQUEST
-        $stmt = $conn->prepare("SELECT * FROM inventory_requests WHERE id=?");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-        $req = $stmt->get_result()->fetch_assoc();
-
-        if(!$req){
-            throw new Exception("Invalid request");
-        }
-
-        if($req['status'] !== 'Pending'){
-            throw new Exception("Already processed");
-        }
-
-        if($req['quantity'] <= 0){
-            throw new Exception("Invalid quantity");
-        }
-
-        // 2. CHECK STOCK
-        $stmt = $conn->prepare("SELECT quantity FROM inventory_items WHERE id=?");
-        $stmt->bind_param("i", $req['item_id']);
-        $stmt->execute();
-        $check = $stmt->get_result()->fetch_assoc();
-
-        if(!$check){
-            throw new Exception("Item not found");
-        }
-
-        if($check['quantity'] < $req['quantity']){
-            throw new Exception("Not enough stock");
-        }
-
-        // 3. DEDUCT STOCK
-        $stmt = $conn->prepare("
-            UPDATE inventory_items 
-            SET quantity = quantity - ? 
-            WHERE id = ?
-        ");
-        $stmt->bind_param("ii", $req['quantity'], $req['item_id']);
-        $stmt->execute();
-
-        // 4. GET AREA
-        $stmt = $conn->prepare("
-            SELECT work_area 
-            FROM work_schedule 
-            WHERE personnel_id = ? 
-            AND schedule_date = CURDATE()
-        ");
-        $stmt->bind_param("i", $req['personnel_id']);
-        $stmt->execute();
-        $area_data = $stmt->get_result()->fetch_assoc();
-        $area = $area_data['work_area'] ?? 'Unknown';
-
-        // 5. LOG USAGE
-        $stmt = $conn->prepare("
-            INSERT INTO inventory_logs 
-            (item_id, personnel_id, area_name, quantity_used, log_date)
-            VALUES (?, ?, ?, ?, CURDATE())
-        ");
-        $stmt->bind_param("iisi", $req['item_id'], $req['personnel_id'], $area, $req['quantity']);
-        $stmt->execute();
-
-        // 6. UPDATE REQUEST
-        $stmt = $conn->prepare("
-            UPDATE inventory_requests 
-            SET status='Approved', approved_at=NOW() 
-            WHERE id=?
-        ");
-        $stmt->bind_param("i", $id);
-        $stmt->execute();
-
-        // ✅ SUCCESS
-        $conn->commit();
-
-    } catch (Exception $e) {
-
-        $conn->rollback();
-
-        echo "<script>alert('".$e->getMessage()."'); window.location='requests_manage.php';</script>";
-        exit();
-    }
-}
-
-if(isset($_POST['reject'])){
-    $id = $_POST['request_id'];
-
-   $stmt = $conn->prepare("
-    UPDATE inventory_requests 
-    SET status='Rejected' 
-    WHERE id=?
-    ");
-    $stmt->bind_param("i", $id);
-    $stmt->execute();
-}
 
 // fetch requests
 $search = $_GET['search'] ?? '';
@@ -138,11 +104,16 @@ if(!empty($status)){
 
 $sql .= " ORDER BY r.id DESC";
 
+
+
 $stmt = $conn->prepare($sql);
 
 if(!empty($params)){
     $stmt->bind_param($types, ...$params);
 }
+
+$stmt->execute();
+$requests = $stmt->get_result();
 
 ?>
 <div class="container-fluid app-layout">
@@ -181,11 +152,11 @@ if(!empty($params)){
     </div>
 
     <div class="col-md-2">
-        <button class="btn btn-primary w-100">Filter</button>
+        <button class="btn btn-success w-100">Filter</button>
     </div>
 
     <div class="col-md-2">
-        <a href="requests_manage.php" class="btn btn-secondary w-100">Reset</a>
+        <a href="request_manage.php" class="btn btn-secondary w-100">Reset</a>
     </div>
 
     </form>
@@ -230,15 +201,17 @@ if(!empty($params)){
     <td>
         <?php if($row['status'] == "Pending"): ?>
 
-        <form method="POST" style="display:inline;">
-        <input type="hidden" name="request_id" value="<?= $row['id'] ?>">
-        <button name="approve" class="btn btn-success btn-sm">Approve</button>
-        </form>
+        <a href="approve_request.php?id=<?= $row['id']; ?>" 
+            class="btn btn-success btn-sm"
+            onclick="return confirm('Approve this request?')">
+            Approve
+        </a>
 
-        <form method="POST" style="display:inline;">
-        <input type="hidden" name="request_id" value="<?= $row['id'] ?>">
-        <button name="reject" class="btn btn-danger btn-sm">Reject</button>
-        </form>
+        <a href="reject_request.php?id=<?= $row['id']; ?>" 
+            class="btn btn-danger btn-sm"
+            onclick="return confirm('Reject this request?')">
+        Reject
+        </a>
 
         <?php else: ?>
         <span class="text-muted">No Action</span>
@@ -254,3 +227,7 @@ if(!empty($params)){
 </main>
 </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

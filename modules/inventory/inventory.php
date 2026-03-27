@@ -12,8 +12,9 @@ if(isset($_POST['add_item'])){
     $item = strtolower($item); // optional (prevents duplicates like "Mop" vs "mop")
     $qty = (int) $_POST['quantity'];
     $category_id = (int) $_POST['category_id'];
+    $unit_id = (int) $_POST['unit_id'];
 
-   if(empty($item) || $qty < 0 || $category_id <= 0){
+   if(empty($item) || $qty < 0 || $category_id <= 0 || $unit_id <= 0){
     $error = "Invalid input";
 } else {
 
@@ -28,10 +29,10 @@ if(isset($_POST['add_item'])){
         } else {
 
             $stmt = $conn->prepare("
-                INSERT INTO inventory_items (item_name, quantity, category_id)
-                VALUES (?, ?, ?)
+                INSERT INTO inventory_items (item_name, quantity, category_id, unit_id)
+                VALUES (?, ?, ?, ?)
             ");
-            $stmt->bind_param("sii", $item, $qty, $category_id);
+            $stmt->bind_param("siii", $item, $qty, $category_id, $unit_id);
             
             $stmt->execute();
             
@@ -63,14 +64,22 @@ if(isset($_POST['add_item'])){
     }
 }
 
-// FETCH CATEGORIES (ONCE)
-$categories = [];
+    // FETCH CATEGORIES (ONCE)
+    $categories = [];
 
-$res = $conn->query("SELECT * FROM inventory_categories");
+    $units = [];
 
-while($row = $res->fetch_assoc()){
-    $categories[] = $row;
-}
+    $res = $conn->query("SELECT * FROM inventory_units ORDER BY unit_name ASC");
+
+    while($row = $res->fetch_assoc()){
+        $units[] = $row;
+    }
+
+    $res = $conn->query("SELECT * FROM inventory_categories");
+
+    while($row = $res->fetch_assoc()){
+        $categories[] = $row;
+    }
 
 // FETCH ITEMS
 $where = "";
@@ -81,9 +90,10 @@ if(isset($_GET['category']) && $_GET['category'] != ""){
 }
 
 $result = $conn->query("
-    SELECT i.*, c.category_name 
+    SELECT i.*, c.category_name, u.unit_name
     FROM inventory_items i
     LEFT JOIN inventory_categories c ON i.category_id = c.id
+    LEFT JOIN inventory_units u ON i.unit_id = u.id
     $where
     ORDER BY i.item_name ASC
 ");
@@ -167,51 +177,62 @@ $result = $conn->query("
     </div>
 </form>
 
-<!-- ADD ITEM FORM -->
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-body">
+        <!-- ADD ITEM FORM -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
 
-        <h6 class="text-muted mb-3">Add New Item</h6>
+                <h6 class="text-muted mb-3">Add New Item</h6>
 
-        <form method="POST" class="row g-2">
+                <div class="row g-2 align-items-end">
 
+            <!-- ITEM NAME -->
             <div class="col-md-4">
-                <input type="text" name="item_name" placeholder="Enter item name" class="form-control" required>
+                <label class="form-label">Item Name</label>
+                <input type="text" name="item_name" class="form-control" required>
             </div>
 
+            <!-- CATEGORY -->
             <div class="col-md-3">
+                <label class="form-label">Category</label>
                 <select name="category_id" class="form-control" required>
                     <option value="">-- Select Category --</option>
 
-                    <?php
-                    foreach($categories as $c){
-
-                        $selected = '';
-
-                        if(isset($_POST['category_id']) && $_POST['category_id'] == $c['id']){
-                            $selected = 'selected';
-                        }
-
-                        echo "<option value='{$c['id']}' $selected>{$c['category_name']}</option>";
-                    }
-                    ?>
+                    <?php foreach($categories as $c): ?>
+                        <option value="<?= $c['id'] ?>">
+                            <?= htmlspecialchars($c['category_name']) ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
             </div>
 
+            <!-- QUANTITY -->
             <div class="col-md-2">
-                <input type="number" name="quantity" placeholder="Enter quantity" class="form-control" required min="0">
-
-                <small class="text-muted d-block mt-1">
-                    Tip: Items below 5 will show as Low Stock
-                </small>
+                <label class="form-label">Quantity</label>
+                <input type="number" name="quantity" class="form-control" required min="0">
             </div>
 
+            <!-- UNIT -->
             <div class="col-md-2">
+                <label class="form-label">Unit</label>
+                <select name="unit_id" class="form-control" required>
+                    <option value="">-- Unit --</option>
+
+                    <?php foreach($units as $u): ?>
+                        <option value="<?= $u['id'] ?>">
+                            <?= htmlspecialchars($u['unit_name']) ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
+            <!-- BUTTON -->
+            <div class="col-md-1">
                 <button type="submit" name="add_item" class="btn btn-success w-100">
-                    + Add Item
+                    +
                 </button>
             </div>
-        </form>
+
+        </div>
     </div>
 </div>
 
@@ -275,7 +296,7 @@ $result = $conn->query("
         
         <td>
             <strong>
-                <?= $row['quantity'] ?>
+                <?= $row['quantity'] . ' ' . ($row['unit_name'] ?? '') ?>
             </strong>
         </td>
 

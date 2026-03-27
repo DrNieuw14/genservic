@@ -7,6 +7,8 @@ require_once __DIR__ . '/url.php';
 require_once __DIR__ . '/database.php';
 
 
+
+
 /* =========================
    TOPBAR (MOVE HERE ✅)
 ========================= */
@@ -37,7 +39,19 @@ function render_topbar(): void
 ========================= */
 function render_sidebar(string $role): void
 {
+    
     global $conn; // ✅ ADD THIS 
+
+    $currentPage = basename($_SERVER['PHP_SELF']);
+    $requestCount = 0;
+
+    if ($conn instanceof mysqli) {
+        $result = $conn->query("SELECT COUNT(*) AS total FROM inventory_requests WHERE status = 'pending'");
+        if ($result) {
+            $row = $result->fetch_assoc();
+            $requestCount = $row['total'];
+        }
+    }
 
     $pendingCount = 0;
 
@@ -52,7 +66,7 @@ function render_sidebar(string $role): void
     
     ?>
     <aside class="col-lg-2 col-md-3 sidebar p-3 text-white">
-        <h5 class="mb-3">GenServis</h5>
+        <h5 class="mb-3 fw-bold">GenServis</h5>
 
                 
 
@@ -109,7 +123,7 @@ function render_sidebar(string $role): void
 
                 <?php if ($role === 'admin' || $role === 'supervisor'): ?>
 
-                    <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/inventory/inventory.php')); ?>">
+                    <a class="nav-link <?= $currentPage == 'inventory.php' ? 'active' : '' ?>" href="<?= htmlspecialchars(app_url('modules/inventory/inventory.php')); ?>">
                         <i class="bi bi-box"></i> Inventory
                     </a>
 
@@ -117,10 +131,25 @@ function render_sidebar(string $role): void
                         <i class="bi bi-tags"></i> Categories
                     </a>
 
-                    <a class="nav-link ms-3" href="<?= htmlspecialchars(app_url('modules/inventory/logs.php')); ?>">
-                        <i class="bi bi-clock-history"></i> Logs
+                    <?php
+                        $class = 'nav-link ms-3 ' . ($currentPage == 'request_manage.php' ? 'active' : '');
+                    ?>
+
+                    <a class="<?= $class ?>" href="<?= htmlspecialchars(app_url('modules/inventory/request_manage.php')); ?>">
+                        Requests
+
+                        <?php if($requestCount > 0): ?>
+                            <span class="badge bg-danger ms-2">
+                                <?= $requestCount ?>
+                            </span>
+                        <?php endif; ?>
+
                     </a>
 
+                    <a class="nav-link ms-3 <?= $currentPage == 'logs.php' ? 'active' : '' ?>" href="<?= htmlspecialchars(app_url('modules/inventory/logs.php')); ?>">
+                        <i class="bi bi-clock-history"></i> Logs
+                    </a>
+                    
                 <?php endif; ?>
 
                 <?php if ($role === 'personnel'): ?>
