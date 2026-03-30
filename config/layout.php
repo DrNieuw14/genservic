@@ -40,18 +40,34 @@ function render_topbar(): void
 function render_sidebar(string $role): void
 {
     
+    
     global $conn; // ✅ ADD THIS 
 
     $currentPage = basename($_SERVER['PHP_SELF']);
+
     $requestCount = 0;
 
-    if ($conn instanceof mysqli) {
-        $result = $conn->query("SELECT COUNT(*) AS total FROM inventory_requests WHERE status = 'pending'");
-        if ($result) {
-            $row = $result->fetch_assoc();
-            $requestCount = $row['total'];
-        }
+if ($conn instanceof mysqli) {
+
+    $userId = $_SESSION['user_id'] ?? 0;
+
+    $stmt = $conn->prepare("
+        SELECT COUNT(*) AS total 
+        FROM inventory_requests 
+        WHERE status = 'pending'
+        AND approved_by IS NULL
+    ");
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result) {
+        $row = $result->fetch_assoc();
+        $requestCount = $row['total'];
     }
+
+    $stmt->close();
+}
 
     $pendingCount = 0;
 

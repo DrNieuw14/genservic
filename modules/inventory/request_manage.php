@@ -78,10 +78,21 @@ require_role(['admin','supervisor']);
 $search = $_GET['search'] ?? '';
 $status = $_GET['status'] ?? '';
 $sql = "
-SELECT r.*, i.item_name, p.fullname
+SELECT 
+    r.id,
+    r.status,
+    r.request_date,
+    p.fullname,
+    i.item_name,
+    ri.quantity,
+    i.quantity AS current_stock
+
 FROM inventory_requests r
-JOIN inventory_items i ON i.id = r.item_id
+
 JOIN personnel p ON p.id = r.personnel_id
+JOIN inventory_request_items ri ON ri.request_id = r.id
+JOIN inventory_items i ON i.id = ri.item_id
+
 WHERE 1=1
 ";
 
@@ -115,6 +126,28 @@ if(!empty($params)){
 $stmt->execute();
 $requests = $stmt->get_result();
 
+$data = [];
+
+while($row = $requests->fetch_assoc()){
+    $rid = $row['id'];
+
+    if(!isset($data[$rid])){
+        $data[$rid] = [
+            'id' => $row['id'],
+            'fullname' => $row['fullname'],
+            'request_date' => $row['request_date'],
+            'status' => $row['status'],
+            'items' => []
+        ];
+    }
+
+    $data[$rid]['items'][] = [
+    'name' => $row['item_name'],
+    'qty' => $row['quantity'],
+    'stock' => $row['current_stock']
+    ];
+}
+
 ?>
 <div class="container-fluid app-layout">
 <div class="row">
@@ -132,6 +165,17 @@ $requests = $stmt->get_result();
     </div>
 
     <div class="card-body">
+        <?php if(isset($_GET['success'])): ?>
+            <div class="alert alert-success">
+                ✅ Request approved successfully!
+            </div>
+        <?php endif; ?>
+
+        <?php if(isset($_GET['error'])): ?>
+            <div class="alert alert-danger">
+                ❌ <?= htmlspecialchars($_GET['error']) ?>
+            </div>
+        <?php endif; ?>
 
         <!-- 🔍 FILTER -->
         <form method="GET" class="row g-2 mb-3">
@@ -170,58 +214,67 @@ $requests = $stmt->get_result();
                     <th>ID</th>
                     <th>Personnel</th>
                     <th>Item</th>
-                    <th>Qty</th>
                     <th>Date</th>
                     <th>Status</th>
                     <th>Action</th>
                 </tr>
             </thead>
 <tbody>
-    <?php while($row = $requests->fetch_assoc()): ?>
-
-    <tr>
-    <td><?= $row['id'] ?></td>
-    <td><?= htmlspecialchars($row['fullname']) ?></td>
-    <td><?= htmlspecialchars($row['item_name']) ?></td>
-    <td><?= $row['quantity'] ?></td>
-    <td><?= $row['request_date'] ?></td>
     
+<?php foreach($data as $req): ?>
+<tr>
+    <td><?= $req['id'] ?></td>
+
+    <td><?= htmlspecialchars($req['fullname']) ?></td>
+
+    <td>
+        <?php foreach($req['items'] as $item): ?>
+            <div>
+                • <?= htmlspecialchars($item['name']) ?> 
+                <strong>(<?= $item['qty'] ?>)</strong>
+                <br>
+                <small class="text-muted">
+                    Remaining stock: <?= $item['stock'] ?>
+                </small>
+            </div>
+        <?php endforeach; ?>
+    </td>
+
+    <td><?= $req['request_date'] ?></td>
+
     <td>
         <?php
         $color = "secondary";
-        if($row['status'] == "Pending") $color = "warning";
-        if($row['status'] == "Approved") $color = "success";
-        if($row['status'] == "Rejected") $color = "danger";
+        if($req['status'] == "Pending") $color = "warning";
+        if($req['status'] == "Approved") $color = "success";
+        if($req['status'] == "Rejected") $color = "danger";
         ?>
-            <span class="badge bg-<?= $color ?>">
-            <?= $row['status'] ?>
+        <span class="badge bg-<?= $color ?>">
+            <?= $req['status'] ?>
         </span>
     </td>
 
     <td>
-        <?php if($row['status'] == "Pending"): ?>
+        <?php if($req['status'] == "Pending"): ?>
+            <a href="approve_request.php?id=<?= $req['id']; ?>" 
+               class="btn btn-success btn-sm"
+               onclick="return confirm('Approve this request?')">
+               Approve
+            </a>
 
-        <a href="approve_request.php?id=<?= $row['id']; ?>" 
-            class="btn btn-success btn-sm"
-            onclick="return confirm('Approve this request?')">
-            Approve
-        </a>
-
-        <a href="reject_request.php?id=<?= $row['id']; ?>" 
-            class="btn btn-danger btn-sm"
-            onclick="return confirm('Reject this request?')">
-        Reject
-        </a>
-
+            <button 
+                class="btn btn-danger btn-sm"
+                onclick="openRejectModal(<?= $req['id']; ?>)">
+                Reject
+            </button>
         <?php else: ?>
-        <span class="text-muted">No Action</span>
+            <span class="text-muted">No Action</span>
         <?php endif; ?>
-
     </td>
 
-    </tr>
-
-    <?php endwhile; ?>
+</tr>
+    <?php endforeach; ?>
+</tbody>
 </tbody>
 </table>
 </main>
@@ -229,5 +282,42 @@ $requests = $stmt->get_result();
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Reject Modal -->
+<div class="modal fade" id="rejectModal" tabindex="-1">
+  <div class="modal-dialog">
+    <form method="POST" action="reject_request.php">
+      <div class="modal-content">
+
+        <div class="modal-header">
+          <h5 class="modal-title">Reject Request</h5>
+        </div>
+
+        <div class="modal-body">
+
+          <input type="hidden" name="request_id" id="reject_id">
+
+          <label>Reason for rejection</label>
+          <textarea name="reason" class="form-control" required></textarea>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-danger">Submit</button>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
 </body>
+
+<script>
+function openRejectModal(id){
+    document.getElementById('reject_id').value = id;
+    var modal = new bootstrap.Modal(document.getElementById('rejectModal'));
+    modal.show();
+}
+</script>
 </html>

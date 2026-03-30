@@ -1,25 +1,25 @@
 <?php
-require_once '../../config/database.php';
-require_once '../../config/auth.php';
+    require_once '../../config/database.php';
+    require_once '../../config/auth.php';
 
-require_role(['admin', 'supervisor']);
+    require_role(['admin', 'supervisor']);
 
-$request_id = $_GET['id'] ?? 0;
+    $request_id = (int) ($_GET['id'] ?? 0);
 
-if (!$request_id) {
-    die("Invalid request ID");
-}
+    if (!$request_id) {
+        die("Invalid request ID");
+    }
 
-$check = $conn->prepare("SELECT status FROM inventory_requests WHERE id = ?");
-$check->bind_param("i", $request_id);
-$check->execute();
-$res = $check->get_result()->fetch_assoc();
+    $check = $conn->prepare("SELECT status FROM inventory_requests WHERE id = ?");
+    $check->bind_param("i", $request_id);
+    $check->execute();
+    $res = $check->get_result()->fetch_assoc();
 
 if (!$res) {
     die("Request not found.");
 }
 
-if ($res['status'] !== 'pending') {
+if ($res['status'] !== 'Pending') {
     die("Request already processed.");
 }
 
@@ -39,10 +39,10 @@ try {
     WHERE ri.request_id = ?
     ";
 
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("i", $request_id);
-$stmt->execute();
-$result = $stmt->get_result();
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $request_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
 
 if ($result->num_rows === 0) {
     throw new Exception("Request has no items.");
@@ -59,31 +59,41 @@ while ($row = $result->fetch_assoc()) {
     $items[] = $row;
 }
 
+$update = $conn->prepare("
+    UPDATE inventory_items 
+    SET quantity = quantity - ? 
+    WHERE id = ?
+");
+
 foreach ($items as $item) {
 
-    $new_qty = $item['current_stock'] - $item['quantity'];
-
-    $update = $conn->prepare("UPDATE inventory_items SET quantity = ? WHERE id = ?");
-    $update->bind_param("ii", $new_qty, $item['item_id']);
+    $update->bind_param("ii", $item['quantity'], $item['item_id']);
     $update->execute();
 }
 
 
 
+$log = $conn->prepare("
+    INSERT INTO inventory_logs (item_id, action, quantity, user_id) 
+    VALUES (?, ?, ?, ?)
+");
+
 foreach ($items as $item) {
 
-    $action = "Request Approved - Deducted";
-    $qty = $item['quantity'];
-    $item_id = $item['item_id'];
+    $action = "deducted";
 
-    
+    $log->bind_param(
+    "isii",
+    $item['item_id'],
+    $action,
+    $item['quantity'],
+    $user_id
+    );
 
-    $log = $conn->prepare("INSERT INTO inventory_logs (item_id, action, quantity, user_id, request_id) VALUES (?, ?, ?, ?, ?)");
-    $log->bind_param("isiii", $item_id, $action, $qty, $user_id, $request_id);
     $log->execute();
 }
 
-$status = "approved";
+$status = "Approved";
 $approved_by = $user_id;
 
 $updateReq = $conn->prepare("UPDATE inventory_requests 
@@ -95,7 +105,7 @@ $updateReq->execute();
 
 $conn->commit();
 
-header("Location: request_manage.php?success=approved");
+header("Location: request_manage.php?success=1");
 exit();
 
 } catch (Exception $e) {

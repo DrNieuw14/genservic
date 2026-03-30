@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3307
--- Generation Time: Mar 23, 2026 at 10:35 AM
+-- Generation Time: Mar 27, 2026 at 10:18 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -103,19 +103,55 @@ INSERT INTO `attendance` (`id`, `personnel_id`, `date`, `time_in`, `time_out`, `
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `inventory_categories`
+--
+
+CREATE TABLE `inventory_categories` (
+  `id` int(11) NOT NULL,
+  `category_name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `inventory_categories`
+--
+
+INSERT INTO `inventory_categories` (`id`, `category_name`, `description`, `created_at`) VALUES
+(1, 'Liquident Cleaners', 'All-Purpose Cleaner, Disinfectant Solution, Glass Cleaner, Floor Cleaner, Toilet Bowl Cleaner', '2026-03-26 06:56:53'),
+(2, 'Soaps & Detergents', 'Liquid Soap\r\nDishwashing Liquid\r\nLaundry Detergent (Powder)\r\nFabric Conditioner', '2026-03-26 06:57:15'),
+(3, 'Cleaning Tools', 'Sponge\r\nScrub Brush\r\nBroom (Soft/Hard)\r\nDustpan\r\nMop (Wet/Dry)', '2026-03-26 06:57:25'),
+(4, 'Paper & Wipes', 'Tissue Paper\r\nPaper Towels\r\nWet Wipes\r\nDisinfectant Wipes', '2026-03-26 06:57:34');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `inventory_items`
 --
 
 CREATE TABLE `inventory_items` (
   `id` int(11) NOT NULL,
   `item_name` varchar(100) NOT NULL,
+  `category_id` int(11) DEFAULT NULL,
   `category` varchar(50) NOT NULL,
   `quantity` int(11) DEFAULT 0,
   `unit` varchar(20) DEFAULT NULL,
   `assigned_personnel_id` int(11) DEFAULT NULL,
   `min_stock` int(11) DEFAULT 5,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `unit_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `inventory_items`
+--
+
+INSERT INTO `inventory_items` (`id`, `item_name`, `category_id`, `category`, `quantity`, `unit`, `assigned_personnel_id`, `min_stock`, `created_at`, `unit_id`) VALUES
+(1, 'walis', NULL, '', 5, NULL, NULL, 5, '2026-03-23 09:44:42', 1),
+(2, 'kingrox', 1, '', 5, NULL, NULL, 5, '2026-03-26 06:58:16', 6),
+(3, 'surf', 2, '', 5, NULL, NULL, 5, '2026-03-26 07:06:48', 1),
+(4, 'tide', 2, '', 3, NULL, NULL, 5, '2026-03-26 07:13:02', 1),
+(5, 'surf', 1, '', 5, NULL, NULL, 5, '2026-03-27 08:23:16', 1);
 
 -- --------------------------------------------------------
 
@@ -125,12 +161,23 @@ CREATE TABLE `inventory_items` (
 
 CREATE TABLE `inventory_logs` (
   `id` int(11) NOT NULL,
-  `item_id` int(11) NOT NULL,
-  `personnel_id` int(11) NOT NULL,
-  `area_name` varchar(100) DEFAULT NULL,
-  `quantity_used` int(11) DEFAULT NULL,
-  `log_date` date DEFAULT NULL
+  `item_id` int(11) DEFAULT NULL,
+  `action` varchar(50) DEFAULT NULL,
+  `quantity` int(11) DEFAULT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `inventory_logs`
+--
+
+INSERT INTO `inventory_logs` (`id`, `item_id`, `action`, `quantity`, `user_id`, `created_at`) VALUES
+(1, 3, 'added', 5, 5, '2026-03-26 07:06:48'),
+(2, 4, 'added', 3, 5, '2026-03-26 07:13:02'),
+(3, 5, 'added', 5, 5, '2026-03-27 08:23:16'),
+(4, 2, 'updated', 5, 5, '2026-03-27 08:32:52'),
+(5, 2, 'updated', 5, 5, '2026-03-27 08:38:13');
 
 -- --------------------------------------------------------
 
@@ -148,6 +195,53 @@ CREATE TABLE `inventory_requests` (
   `approved_by` int(11) DEFAULT NULL,
   `approved_at` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `inventory_requests`
+--
+
+INSERT INTO `inventory_requests` (`id`, `personnel_id`, `item_id`, `quantity`, `status`, `request_date`, `approved_by`, `approved_at`) VALUES
+(1, 21, 1, 1, 'Pending', '2026-03-23', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inventory_request_items`
+--
+
+CREATE TABLE `inventory_request_items` (
+  `id` int(11) NOT NULL,
+  `request_id` int(11) DEFAULT NULL,
+  `item_id` int(11) DEFAULT NULL,
+  `quantity` int(11) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `inventory_units`
+--
+
+CREATE TABLE `inventory_units` (
+  `id` int(11) NOT NULL,
+  `unit_name` varchar(50) NOT NULL,
+  `abbreviation` varchar(20) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `inventory_units`
+--
+
+INSERT INTO `inventory_units` (`id`, `unit_name`, `abbreviation`, `created_at`) VALUES
+(1, 'pcs', '', '2026-03-27 08:10:37'),
+(2, 'boxes', '', '2026-03-27 08:10:37'),
+(3, 'bottles', '', '2026-03-27 08:10:37'),
+(4, 'liters', '', '2026-03-27 08:10:37'),
+(5, 'ml', '', '2026-03-27 08:10:37'),
+(6, 'kg', '', '2026-03-27 08:10:37'),
+(7, 'grams', '', '2026-03-27 08:10:37'),
+(8, 'gallon', '', '2026-03-27 08:10:37');
 
 -- --------------------------------------------------------
 
@@ -395,19 +489,25 @@ ALTER TABLE `attendance`
   ADD PRIMARY KEY (`id`);
 
 --
+-- Indexes for table `inventory_categories`
+--
+ALTER TABLE `inventory_categories`
+  ADD PRIMARY KEY (`id`);
+
+--
 -- Indexes for table `inventory_items`
 --
 ALTER TABLE `inventory_items`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `assigned_personnel_id` (`assigned_personnel_id`);
+  ADD KEY `assigned_personnel_id` (`assigned_personnel_id`),
+  ADD KEY `fk_category` (`category_id`),
+  ADD KEY `fk_unit` (`unit_id`);
 
 --
 -- Indexes for table `inventory_logs`
 --
 ALTER TABLE `inventory_logs`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `item_id` (`item_id`),
-  ADD KEY `personnel_id` (`personnel_id`);
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `inventory_requests`
@@ -416,6 +516,20 @@ ALTER TABLE `inventory_requests`
   ADD PRIMARY KEY (`id`),
   ADD KEY `personnel_id` (`personnel_id`),
   ADD KEY `item_id` (`item_id`);
+
+--
+-- Indexes for table `inventory_request_items`
+--
+ALTER TABLE `inventory_request_items`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `request_id` (`request_id`),
+  ADD KEY `item_id` (`item_id`);
+
+--
+-- Indexes for table `inventory_units`
+--
+ALTER TABLE `inventory_units`
+  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `personnel`
@@ -479,22 +593,40 @@ ALTER TABLE `attendance`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
+-- AUTO_INCREMENT for table `inventory_categories`
+--
+ALTER TABLE `inventory_categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
 -- AUTO_INCREMENT for table `inventory_items`
 --
 ALTER TABLE `inventory_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `inventory_logs`
 --
 ALTER TABLE `inventory_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `inventory_requests`
 --
 ALTER TABLE `inventory_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `inventory_request_items`
+--
+ALTER TABLE `inventory_request_items`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `inventory_units`
+--
+ALTER TABLE `inventory_units`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `personnel`
@@ -540,14 +672,10 @@ ALTER TABLE `work_schedule`
 -- Constraints for table `inventory_items`
 --
 ALTER TABLE `inventory_items`
-  ADD CONSTRAINT `inventory_items_ibfk_1` FOREIGN KEY (`assigned_personnel_id`) REFERENCES `personnel` (`id`);
-
---
--- Constraints for table `inventory_logs`
---
-ALTER TABLE `inventory_logs`
-  ADD CONSTRAINT `inventory_logs_ibfk_1` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`),
-  ADD CONSTRAINT `inventory_logs_ibfk_2` FOREIGN KEY (`personnel_id`) REFERENCES `personnel` (`id`);
+  ADD CONSTRAINT `fk_category` FOREIGN KEY (`category_id`) REFERENCES `inventory_categories` (`id`) ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_unit` FOREIGN KEY (`unit_id`) REFERENCES `inventory_units` (`id`),
+  ADD CONSTRAINT `inventory_items_ibfk_1` FOREIGN KEY (`assigned_personnel_id`) REFERENCES `personnel` (`id`),
+  ADD CONSTRAINT `inventory_items_ibfk_2` FOREIGN KEY (`unit_id`) REFERENCES `inventory_units` (`id`);
 
 --
 -- Constraints for table `inventory_requests`
@@ -555,6 +683,13 @@ ALTER TABLE `inventory_logs`
 ALTER TABLE `inventory_requests`
   ADD CONSTRAINT `inventory_requests_ibfk_1` FOREIGN KEY (`personnel_id`) REFERENCES `personnel` (`id`),
   ADD CONSTRAINT `inventory_requests_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`);
+
+--
+-- Constraints for table `inventory_request_items`
+--
+ALTER TABLE `inventory_request_items`
+  ADD CONSTRAINT `inventory_request_items_ibfk_1` FOREIGN KEY (`request_id`) REFERENCES `inventory_requests` (`id`),
+  ADD CONSTRAINT `inventory_request_items_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`);
 
 --
 -- Constraints for table `personnel`

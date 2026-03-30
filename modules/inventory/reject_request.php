@@ -4,7 +4,12 @@ require_once '../../config/auth.php';
 
 require_role(['admin', 'supervisor']);
 
-$request_id = $_GET['id'] ?? 0;
+$request_id = (int) ($_POST['request_id'] ?? 0);
+$reason = trim($_POST['reason'] ?? '');
+
+    if(empty($reason)){
+    die("Rejection reason is required");
+}
 
 if (!$request_id) {
     die("Invalid request ID");
@@ -19,8 +24,9 @@ if (!$res) {
     die("Request not found.");
 }
 
-if ($res['status'] !== 'pending') {
-    die("Request already processed.");
+if ($res['status'] !== 'Pending') {
+    header("Location: request_manage.php?error=already_processed");
+    exit();
 }
 
 $user_id = $_SESSION['user_id'] ?? 0;
@@ -31,21 +37,24 @@ if (!$user_id) {
 
 try {
 
-    $status = "rejected";
+    $status = "Rejected";
     $approved_by = $user_id;
 
-    $update = $conn->prepare("UPDATE inventory_requests 
-        SET status=?, approved_by=?, approved_at=NOW() 
-        WHERE id=?");
+    $stmt = $conn->prepare("
+    UPDATE inventory_requests 
+    SET status='Rejected', rejection_reason=?, approved_by=?, approved_at=NOW()
+    WHERE id=?
+    ");
 
-    $update->bind_param("sii", $status, $approved_by, $request_id);
-    $update->execute();
+    $stmt->bind_param("sii", $reason, $user_id, $request_id);
+    $stmt->execute();
 
     header("Location: request_manage.php?success=rejected");
     exit();
 
 } catch (Exception $e) {
 
+    $conn->rollback();
     header("Location: request_manage.php?error=" . urlencode($e->getMessage()));
     exit();
 }
