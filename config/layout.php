@@ -7,7 +7,24 @@ require_once __DIR__ . '/url.php';
 require_once __DIR__ . '/database.php';
 
 
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>GenServis</title>
 
+    <!-- ✅ Bootstrap -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- OPTIONAL: Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- YOUR CSS -->
+    <link rel="stylesheet" href="<?= app_url('assets/css/app.css'); ?>">
+</head>
+<body>
+<?php
 
 /* =========================
    TOPBAR (MOVE HERE ✅)
@@ -32,6 +49,15 @@ function render_topbar(): void
     </div>
 <?php
 }
+
+function render_footer(): void
+{
+?>
+    </body>
+</html>
+<?php
+}
+
 
 
 /* =========================
@@ -88,10 +114,10 @@ if ($conn instanceof mysqli) {
 
         <nav class="nav flex-column">
 
+            <small class="text-uppercase fw-bold text-light mt-3 d-block"> 🏠 Main</small>
+
             <a class="nav-link" href="<?= htmlspecialchars(app_url('dashboard.php'), ENT_QUOTES, 'UTF-8'); ?>">Dashboard</a>
-
             <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/attendance/attendance.php'), ENT_QUOTES, 'UTF-8'); ?>">Attendance</a>
-
             <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/attendance/history.php'), ENT_QUOTES, 'UTF-8'); ?>">Attendance History</a>
 
             <?php if ($role === 'personnel'): ?>
@@ -116,7 +142,16 @@ if ($conn instanceof mysqli) {
 
                 <?php endif; ?>
 
-                <a class="nav-link" href="<?= htmlspecialchars(app_url('reports/attendance_report.php'), ENT_QUOTES, 'UTF-8'); ?>">Reports</a>
+                <!-- REPORTS MAIN -->
+                    <small class="text-uppercase fw-bold text-light mt-3 d-block">📊 Reports</small>
+
+                    <a class="nav-link mb-1" href="<?= app_url('reports/index.php'); ?>">
+                        Inventory Reports
+                    </a>
+
+                    <a class="nav-link mb-1" href="<?= app_url('reports/attendance_report.php'); ?>">
+                        Attendance Reports
+                    </a>
 
                 <?php if ($role === 'admin'): ?>
                     
@@ -125,25 +160,18 @@ if ($conn instanceof mysqli) {
                 <?php endif; ?>
 
                 <?php if ($role === 'supervisor' || $role === 'admin'): ?>
-                    <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/users/approval.php'), ENT_QUOTES, 'UTF-8'); ?>">
-                        Account Approval
-
-                        <?php if($pendingCount > 0): ?>
-                            <span class="badge bg-danger ms-2">
-                                <?= $pendingCount ?>
-                            </span>
-                        <?php endif; ?>
-
-                    </a>
+                    
                 <?php endif; ?>
 
                 <?php if ($role === 'admin' || $role === 'supervisor'): ?>
+
+                    <small class="text-uppercase fw-bold text-light mt-3 d-block">📦 Inventory</small>
 
                     <a class="nav-link <?= $currentPage == 'inventory.php' ? 'active' : '' ?>" href="<?= htmlspecialchars(app_url('modules/inventory/inventory.php')); ?>">
                         <i class="bi bi-box"></i> Inventory
                     </a>
 
-                    <a class="nav-link ms-3" href="<?= htmlspecialchars(app_url('modules/inventory/categories/index.php')); ?>">
+                    <a class="nav-link mb-1" href="<?= htmlspecialchars(app_url('modules/inventory/categories/index.php')); ?>">
                         <i class="bi bi-tags"></i> Categories
                     </a>
 
@@ -162,7 +190,7 @@ if ($conn instanceof mysqli) {
 
                     </a>
 
-                    <a class="nav-link ms-3 <?= $currentPage == 'logs.php' ? 'active' : '' ?>" href="<?= htmlspecialchars(app_url('modules/inventory/logs.php')); ?>">
+                    <a class="nav-link mb-1 <?= $currentPage == 'logs.php' ? 'active' : '' ?>" href="<?= htmlspecialchars(app_url('modules/inventory/logs.php')); ?>">
                         <i class="bi bi-clock-history"></i> Logs
                     </a>
                     
@@ -175,7 +203,25 @@ if ($conn instanceof mysqli) {
 
                 <?php endif; ?>
 
-                <a class="nav-link" href="<?= htmlspecialchars(app_url('logout.php'), ENT_QUOTES, 'UTF-8'); ?>">Logout</a>
+                <small class="text-uppercase fw-bold text-light mt-3 d-block">⚙️ Management</small>
+                <!-- ACCOUNT APPROVAL (MOVED HERE) -->
+                <?php if ($role === 'supervisor' || $role === 'admin'): ?>
+                    
+                    <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/users/approval.php'), ENT_QUOTES, 'UTF-8'); ?>">
+                        👤 Account Approval
+
+                        <?php if($pendingCount > 0): ?>
+                            <span class="badge bg-danger ms-2">
+                                <?= $pendingCount ?>
+                            </span>
+                        <?php endif; ?>
+                    </a>
+                <?php endif; ?>
+
+                <hr class="text-light">
+                
+
+                <a class="nav-link" href="<?= htmlspecialchars(app_url('logout.php'), ENT_QUOTES, 'UTF-8'); ?>">🚪Logout</a>
 
             </nav>
     </aside>

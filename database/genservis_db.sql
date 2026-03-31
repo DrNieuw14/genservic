@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3307
--- Generation Time: Mar 27, 2026 at 10:18 AM
+-- Generation Time: Mar 30, 2026 at 11:17 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -133,10 +133,7 @@ CREATE TABLE `inventory_items` (
   `id` int(11) NOT NULL,
   `item_name` varchar(100) NOT NULL,
   `category_id` int(11) DEFAULT NULL,
-  `category` varchar(50) NOT NULL,
   `quantity` int(11) DEFAULT 0,
-  `unit` varchar(20) DEFAULT NULL,
-  `assigned_personnel_id` int(11) DEFAULT NULL,
   `min_stock` int(11) DEFAULT 5,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `unit_id` int(11) DEFAULT NULL
@@ -146,12 +143,12 @@ CREATE TABLE `inventory_items` (
 -- Dumping data for table `inventory_items`
 --
 
-INSERT INTO `inventory_items` (`id`, `item_name`, `category_id`, `category`, `quantity`, `unit`, `assigned_personnel_id`, `min_stock`, `created_at`, `unit_id`) VALUES
-(1, 'walis', NULL, '', 5, NULL, NULL, 5, '2026-03-23 09:44:42', 1),
-(2, 'kingrox', 1, '', 5, NULL, NULL, 5, '2026-03-26 06:58:16', 6),
-(3, 'surf', 2, '', 5, NULL, NULL, 5, '2026-03-26 07:06:48', 1),
-(4, 'tide', 2, '', 3, NULL, NULL, 5, '2026-03-26 07:13:02', 1),
-(5, 'surf', 1, '', 5, NULL, NULL, 5, '2026-03-27 08:23:16', 1);
+INSERT INTO `inventory_items` (`id`, `item_name`, `category_id`, `quantity`, `min_stock`, `created_at`, `unit_id`) VALUES
+(1, 'walis', NULL, 5, 5, '2026-03-23 09:44:42', 1),
+(2, 'kingrox', 1, 4, 5, '2026-03-26 06:58:16', 6),
+(3, 'surf', 2, 4, 5, '2026-03-26 07:06:48', 1),
+(4, 'tide', 2, 3, 5, '2026-03-26 07:13:02', 1),
+(5, 'surf', 1, 5, 5, '2026-03-27 08:23:16', 1);
 
 -- --------------------------------------------------------
 
@@ -165,19 +162,22 @@ CREATE TABLE `inventory_logs` (
   `action` varchar(50) DEFAULT NULL,
   `quantity` int(11) DEFAULT NULL,
   `user_id` int(11) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `request_id` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `inventory_logs`
 --
 
-INSERT INTO `inventory_logs` (`id`, `item_id`, `action`, `quantity`, `user_id`, `created_at`) VALUES
-(1, 3, 'added', 5, 5, '2026-03-26 07:06:48'),
-(2, 4, 'added', 3, 5, '2026-03-26 07:13:02'),
-(3, 5, 'added', 5, 5, '2026-03-27 08:23:16'),
-(4, 2, 'updated', 5, 5, '2026-03-27 08:32:52'),
-(5, 2, 'updated', 5, 5, '2026-03-27 08:38:13');
+INSERT INTO `inventory_logs` (`id`, `item_id`, `action`, `quantity`, `user_id`, `created_at`, `request_id`) VALUES
+(1, 3, 'added', 5, 5, '2026-03-26 07:06:48', NULL),
+(2, 4, 'added', 3, 5, '2026-03-26 07:13:02', NULL),
+(3, 5, 'added', 5, 5, '2026-03-27 08:23:16', NULL),
+(4, 2, 'updated', 5, 5, '2026-03-27 08:32:52', NULL),
+(5, 2, 'updated', 5, 5, '2026-03-27 08:38:13', NULL),
+(6, 2, 'deducted', 1, 5, '2026-03-30 03:06:23', NULL),
+(7, 3, 'deducted', 1, 5, '2026-03-30 03:06:23', NULL);
 
 -- --------------------------------------------------------
 
@@ -188,20 +188,25 @@ INSERT INTO `inventory_logs` (`id`, `item_id`, `action`, `quantity`, `user_id`, 
 CREATE TABLE `inventory_requests` (
   `id` int(11) NOT NULL,
   `personnel_id` int(11) NOT NULL,
-  `item_id` int(11) NOT NULL,
-  `quantity` int(11) NOT NULL,
   `status` varchar(20) DEFAULT 'Pending',
   `request_date` date DEFAULT NULL,
   `approved_by` int(11) DEFAULT NULL,
-  `approved_at` datetime DEFAULT NULL
+  `approved_at` datetime DEFAULT NULL,
+  `rejection_reason` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `inventory_requests`
 --
 
-INSERT INTO `inventory_requests` (`id`, `personnel_id`, `item_id`, `quantity`, `status`, `request_date`, `approved_by`, `approved_at`) VALUES
-(1, 21, 1, 1, 'Pending', '2026-03-23', NULL, NULL);
+INSERT INTO `inventory_requests` (`id`, `personnel_id`, `status`, `request_date`, `approved_by`, `approved_at`, `rejection_reason`) VALUES
+(1, 21, 'rejected', '2026-03-23', NULL, NULL, NULL),
+(2, 21, 'Rejected', '2026-03-30', 5, '2026-03-30 10:03:49', 'wa'),
+(3, 21, 'Rejected', '2026-03-30', 5, '2026-03-30 10:52:49', 'none!'),
+(4, 21, 'Rejected', '2026-03-30', 5, '2026-03-30 10:52:57', 'isa lang'),
+(5, 21, 'Rejected', '2026-03-30', 5, '2026-03-30 10:53:02', 'tama na!'),
+(6, 21, 'Approved', '2026-03-30', 5, '2026-03-30 11:06:23', NULL),
+(8, 21, 'Pending', '2026-03-30', NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -215,6 +220,23 @@ CREATE TABLE `inventory_request_items` (
   `item_id` int(11) DEFAULT NULL,
   `quantity` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `inventory_request_items`
+--
+
+INSERT INTO `inventory_request_items` (`id`, `request_id`, `item_id`, `quantity`) VALUES
+(1, 2, 2, 1),
+(2, 2, 3, 1),
+(3, 3, 2, 1),
+(4, 3, 3, 1),
+(5, 4, 2, 1),
+(6, 4, 3, 1),
+(7, 5, 2, 1),
+(8, 5, 3, 1),
+(9, 6, 2, 1),
+(10, 6, 3, 1),
+(11, 8, 2, 2);
 
 -- --------------------------------------------------------
 
@@ -499,7 +521,6 @@ ALTER TABLE `inventory_categories`
 --
 ALTER TABLE `inventory_items`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `assigned_personnel_id` (`assigned_personnel_id`),
   ADD KEY `fk_category` (`category_id`),
   ADD KEY `fk_unit` (`unit_id`);
 
@@ -514,8 +535,7 @@ ALTER TABLE `inventory_logs`
 --
 ALTER TABLE `inventory_requests`
   ADD PRIMARY KEY (`id`),
-  ADD KEY `personnel_id` (`personnel_id`),
-  ADD KEY `item_id` (`item_id`);
+  ADD KEY `personnel_id` (`personnel_id`);
 
 --
 -- Indexes for table `inventory_request_items`
@@ -608,19 +628,19 @@ ALTER TABLE `inventory_items`
 -- AUTO_INCREMENT for table `inventory_logs`
 --
 ALTER TABLE `inventory_logs`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `inventory_requests`
 --
 ALTER TABLE `inventory_requests`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `inventory_request_items`
 --
 ALTER TABLE `inventory_request_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `inventory_units`
@@ -673,16 +693,13 @@ ALTER TABLE `work_schedule`
 --
 ALTER TABLE `inventory_items`
   ADD CONSTRAINT `fk_category` FOREIGN KEY (`category_id`) REFERENCES `inventory_categories` (`id`) ON DELETE SET NULL,
-  ADD CONSTRAINT `fk_unit` FOREIGN KEY (`unit_id`) REFERENCES `inventory_units` (`id`),
-  ADD CONSTRAINT `inventory_items_ibfk_1` FOREIGN KEY (`assigned_personnel_id`) REFERENCES `personnel` (`id`),
-  ADD CONSTRAINT `inventory_items_ibfk_2` FOREIGN KEY (`unit_id`) REFERENCES `inventory_units` (`id`);
+  ADD CONSTRAINT `fk_unit` FOREIGN KEY (`unit_id`) REFERENCES `inventory_units` (`id`);
 
 --
 -- Constraints for table `inventory_requests`
 --
 ALTER TABLE `inventory_requests`
-  ADD CONSTRAINT `inventory_requests_ibfk_1` FOREIGN KEY (`personnel_id`) REFERENCES `personnel` (`id`),
-  ADD CONSTRAINT `inventory_requests_ibfk_2` FOREIGN KEY (`item_id`) REFERENCES `inventory_items` (`id`);
+  ADD CONSTRAINT `inventory_requests_ibfk_1` FOREIGN KEY (`personnel_id`) REFERENCES `personnel` (`id`);
 
 --
 -- Constraints for table `inventory_request_items`

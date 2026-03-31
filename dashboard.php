@@ -275,8 +275,8 @@ $trendTotals = [];
                         </div>
                     </div>
 
-                            <div class="mb-2 text-muted small">
-                                Real-time monitoring of inventory and requests
+                            <div class="alert alert-light border mb-3">
+                                📊 Monitor critical inventory levels and recent request activities in real time
                             </div>
 
                             <h6 class="mt-3 mb-2 text-muted">📊 Monitoring Overview</h6>
@@ -288,6 +288,7 @@ $trendTotals = [];
                 <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
                     <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
                         <span>📦 Low Stock</span>
+                        <span class="badge bg-light text-dark"><?= $low_stock_count ?></span>
                         <a href="inventory.php" class="text-white small text-decoration-none">
                             View All →
                         </a>
@@ -303,9 +304,15 @@ $trendTotals = [];
                             </thead>
                             <tbody>
                                 <?php while($row = $low_stock_items->fetch_assoc()): ?>
-                                <tr>
+                                <tr style="cursor:pointer;" onclick="window.location='inventory.php'">
                                     <td><?= htmlspecialchars($row['item_name']); ?></td>
-                                    <td><span class="badge bg-danger"><?= $row['quantity']; ?></span></td>
+                                    <td>
+                                        <?php if ($row['quantity'] <= 3): ?>
+                                            <span class="badge bg-danger"><?= $row['quantity']; ?></span>
+                                        <?php else: ?>
+                                            <span class="badge bg-warning text-dark"><?= $row['quantity']; ?></span>
+                                        <?php endif; ?>
+                                    </td>
                                 </tr>
                                 <?php endwhile; ?>
                             </tbody>
@@ -320,6 +327,7 @@ $trendTotals = [];
                 <div class="card border-0 shadow-sm h-100 border-start border-4 border-danger">
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                         <span>📄 Recent Requests</span>
+                        <span class="badge bg-light text-dark"><?= $low_stock_count ?></span>
                         <a href="requests.php" class="text-white small text-decoration-none">
                             View All →
                         </a>
@@ -338,7 +346,7 @@ $trendTotals = [];
                                 <?php if ($recent_requests->num_rows > 0): ?>
 
                                     <?php while($row = $recent_requests->fetch_assoc()): ?>
-                                    <tr>
+                                    <tr style="cursor:pointer;" onclick="window.location='modules/inventory/request_manage.php?id=<?= $row['id'] ?>'">
                                         <td>#<?= $row['id']; ?></td>
                                         <td>
                                             <?php if ($row['status'] == 'pending'): ?>
@@ -370,6 +378,11 @@ $trendTotals = [];
         </div>                     
     </div>
                             <hr class="my-4">
+                                    
+                                    <div class="text-end text-muted small mb-2">
+                                        Last updated: <?= date('h:i A'); ?>
+                                    </div>
+
                             <div class="card border-0 shadow-sm">                           
                                 <div class="card border-0 shadow-sm">                     
                                     <div class="card-header accent-bg text-dark">
@@ -383,9 +396,7 @@ $trendTotals = [];
                             </main>
                         </div>
                     </div>
-                </div>       
-            </div>   
-        </div>
+            
         
         <script src="<?= htmlspecialchars(app_url('assets/js/app.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
             <script>
@@ -415,7 +426,7 @@ $trendTotals = [];
                     }
                     });
             </script>
-        }
+        
     </body>
 </html>
 

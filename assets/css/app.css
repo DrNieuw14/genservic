@@ -150,3 +150,92 @@ body {
     transition: 0.2s;
     box-shadow: 0 6px 15px rgba(0,0,0,0.1);
 }
+
+
+
+.nav-link.active {
+    background-color: rgba(255,255,255,0.15);
+    border-radius: 6px;
+}
+
+.nav-link {
+    transition: 0.2s;
+}
+
+.nav-link:hover {
+    background-color: rgba(255,255,255,0.1);
+    border-radius: 6px;
+}
+
+.nav-link.active {
+    background-color: rgba(255,255,255,0.2);
+    border-radius: 6px;
+    font-weight: bold;
+}
+
+@media print {
+
+    /* ❌ Hide everything */
+    body * {
+        visibility: hidden;
+    }
+
+    /* ✅ Show only DTR */
+    #print-area, #print-area * {
+        visibility: visible;
+    }
+
+    /* ✅ Position + scale (MAIN CONTROL) */
+    #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+
+        transform: scale(0.70);
+        transform-origin: top left;
+
+        page-break-inside: avoid;
+    }
+
+    /* ❌ Hide UI */
+    form, button, a, .card:first-child {
+        display: none !important;
+    }
+
+    /* ✅ Table compact */
+    table {
+        font-size: 10px;
+        page-break-inside: avoid;
+    }
+
+    table td, table th {
+        padding: 1.5px !important;
+        line-height: 1.1;
+    }
+
+    /* ✅ Title */
+    h3 {
+        font-size: 14px;
+    }
+
+    /* ✅ Reduce spacing */
+    .mt-5, .mt-4, .mt-3 {
+        margin-top: 4px !important;
+    }
+
+    /* ✅ Prevent signature break */
+    .signature-section {
+        page-break-inside: avoid;
+    }
+}
+
+@page {
+    size: A4 portrait;
+    margin: 5mm;
+}
+
+table td, table th {
+    padding: 3px !important;
+}
+
