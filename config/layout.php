@@ -153,6 +153,12 @@ if ($conn instanceof mysqli) {
                         Attendance Reports
                     </a>
 
+                    <!--DTR REports -->
+                    <a class="nav-link mb-1 <?= $currentPage == 'dtr_report.php' ? 'active' : '' ?>"
+                        href="<?= app_url('reports/dtr_report.php'); ?>">
+                        <i class="bi bi-calendar-check"></i> DTR Reports
+                    </a>
+
                 <?php if ($role === 'admin'): ?>
                     
                     <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/personnel/personnel.php'), ENT_QUOTES, 'UTF-8'); ?>">Personnel Masterlist</a>

@@ -1,0 +1,13 @@
+{
+    "name": "admin/genservis",
+    "type": "project",
+    "authors": [
+        {
+            "name": "Mak",
+            "email": "markanthony.abril@cvsu.edu.ph"
+        }
+    ],
+    "require": {
+        "dompdf/dompdf": "^3.1"
+    }
+}
