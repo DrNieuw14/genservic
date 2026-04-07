@@ -229,41 +229,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $checkStmt->close();
 
         if ($exists) {
-            $feedback = ['type' => 'warning', 'message' => 'Duplicate Time In is not allowed.'];
-        } else {
-            if ($shiftName === 'REST') {
-                $status = 'Rest Day (Worked)';
-            } 
-            
-            elseif ($shiftStart) {
+    $feedback = ['type' => 'warning', 'message' => 'Duplicate Time In is not allowed.'];
+} else {
 
-                if (strtotime($currentTime) < strtotime($shiftStart)) {
-                    $status = 'Early';
-                }
-                elseif (strtotime($currentTime) > strtotime($shiftStart)) {
-                    $status = 'Late';
-                }
-                else {
-                    $status = 'Present';
-                }
+    // ✅ BLOCK if no schedule
+    if (!$shiftStart && $shiftName !== 'REST') {
+        $feedback = ['type' => 'danger', 'message' => 'No schedule assigned today.'];
+    } else {
 
+        if ($shiftName === 'REST') {
+            $status = 'Rest Day (Worked)';
+        } 
         
+        elseif ($shiftStart) {
 
+            $diff = strtotime($currentTime) - strtotime($shiftStart);
+
+            if ($diff < 0) {
+                $status = 'On Time';
+            } elseif ($diff > 0) {
+                $minutesLate = round($diff / 60);
+                $status = "Late ({$minutesLate} mins)";
             } else {
-                $status = 'No Schedule';
+                $status = 'On Time';
             }
-
-            $insertSql = 'INSERT INTO attendance (personnel_id, date, time_in, status)
-                          VALUES (?, ?, ?, ?)';
-            $insertStmt = $conn->prepare($insertSql);
-            $insertStmt->bind_param('isss', $userId, $today, $currentTime, $status);
-            $insertStmt->execute();
-            $insertStmt->close();
-
-            $feedback = ['type' => 'success', 'message' => "Time In recorded with status: {$status}."];
         }
 
-    } elseif ($action === 'time_out') {
+        // 👉 INSERT ONLY IF VALID
+        $insertSql = 'INSERT INTO attendance (personnel_id, date, time_in, status)
+                      VALUES (?, ?, ?, ?)';
+        $insertStmt = $conn->prepare($insertSql);
+        $insertStmt->bind_param('isss', $userId, $today, $currentTime, $status);
+        $insertStmt->execute();
+        $insertStmt->close();
+
+        $feedback = ['type' => 'success', 'message' => "Time In recorded with status: {$status}."];
+    }
+}
+
+           
+                }
+elseif ($action === 'time_out') {
 
     // 🔥 RELOAD latest time_in (IMPORTANT FIX)
     $checkSql = "SELECT time_in FROM attendance WHERE personnel_id=? AND date=? LIMIT 1";
@@ -331,168 +337,318 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     <link rel="stylesheet" href="<?= htmlspecialchars(app_url('assets/css/app.css'), ENT_QUOTES, 'UTF-8'); ?>">
 </head>
 <body>
-<div class="container-fluid app-layout">
-    <div class="row">
-        <?php render_sidebar($_SESSION['role']); ?>
-        
-        <main class="col-lg-10 col-md-9 p-4">
+    <div class="container-fluid app-layout">
+        <div class="row">
+            <?php render_sidebar($_SESSION['role']); ?>
             
-        <?php render_topbar(); ?>   <!-- ✅ ADD THIS LINE -->
+            <main class="col-lg-10 col-md-9 p-4">
+                
+                    <?php render_topbar(); ?>   <!-- ✅ ADD THIS LINE -->
 
-            <h3 class="mb-3">Attendance Monitoring</h3>
+                        <h3 class="mb-3">Attendance Monitoring</h3>
 
-            <?php if ($feedback['message'] !== ''): ?>
-                <div class="alert alert-<?= htmlspecialchars($feedback['type'], ENT_QUOTES, 'UTF-8'); ?>">
-                    <?= htmlspecialchars($feedback['message'], ENT_QUOTES, 'UTF-8'); ?>
-                </div>
-            <?php endif; ?>
+                        <div class="row mb-3">
 
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <form id="attendanceForm" class="row g-3 align-items-end">
-                        <div class="col-md-6">
+                            <?php
+                            $todaySummary = [
+                                'present' => 0,
+                                'late' => 0,
+                                'absent' => 0,
+                                'ontime' => 0
+                            ];
 
-<?php if (!$isPersonnel): ?>
+                            $sql = "
+                            SELECT 
+                                SUM(status = 'Present') as present,
+                                SUM(status LIKE 'Late%') as late,
+                                SUM(status = 'On Time') as ontime
+                            FROM attendance
+                            WHERE date = CURDATE()
+                            ";
 
-<label class="form-label">Personnel</label>
-<select name="user_id" class="form-select" required onchange="this.form.submit()">
-<option value="">Select personnel...</option>
+                            $res = $conn->query($sql);
+                            if ($row = $res->fetch_assoc()) {
+                                $todaySummary['present'] = $row['present'] ?? 0;
+                                $todaySummary['late'] = $row['late'] ?? 0;
+                                $todaySummary['ontime'] = $row['ontime'] ?? 0;
+                            }
+                            ?>
 
-<?php foreach ($personnelList as $person): ?>
-<option value="<?= (int) $person['id']; ?>"
-    <?= ($person['id'] == $userId) ? 'selected' : ''; ?>>
-<?= htmlspecialchars($person['fullname'], ENT_QUOTES, 'UTF-8'); ?>
-</option>
-<?php endforeach; ?>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-success shadow-sm">
+                                    <div class="card-body">
+                                        <h6>Present</h6>
+                                        <h4><?= $todaySummary['present']; ?></h4>
+                                    </div>
+                                </div>
+                            </div>
 
-</select>
+                            <div class="col-md-3">
+                                <div class="card text-dark bg-warning shadow-sm">
+                                    <div class="card-body">
+                                        <h6>Late</h6>
+                                        <h4><?= $todaySummary['late']; ?></h4>
+                                    </div>
+                                </div>
+                            </div>
 
-<?php else: ?>
+                            <div class="col-md-3">
+                                <div class="card text-white bg-primary shadow-sm">
+                                    <div class="card-body">
+                                        <h6>On Time</h6>
+                                        <h4><?= $todaySummary['ontime']; ?></h4>
+                                    </div>
+                                </div>
+                            </div>
 
-<input type="hidden" name="user_id" value="<?= (int) $_SESSION['personnel_id']; ?>">
+                            <div class="col-md-3">
+                                <div class="card text-white bg-dark shadow-sm">
+                                    <div class="card-body">
+                                        <h6>Total Logged</h6>
+                                        <h4><?= $todaySummary['present'] + $todaySummary['late'] + $todaySummary['ontime']; ?></h4>
+                                    </div>
+                                </div>
+                            </div>
 
-<label class="form-label">Personnel</label>
-<div class="border rounded p-3 bg-light">
+                        </div>
 
-    <h5 class="mb-2">
-        👤 <?= htmlspecialchars($displayName); ?>
-    </h5>
+                        <?php if ($feedback['message'] !== ''): ?>
+                            <div class="alert alert-<?= htmlspecialchars($feedback['type'], ENT_QUOTES, 'UTF-8'); ?>">
+                                <?= htmlspecialchars($feedback['message'], ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                        <?php endif; ?>
 
-    
-    <p class="mb-1">
-📍 Area:
-<?php if (!empty($areaName)): ?>
-    <?php foreach (explode(',', $areaName) as $area): ?>
-        <span class="badge bg-secondary me-1">
-            <?= htmlspecialchars(trim($area)); ?>
-        </span>
-    <?php endforeach; ?>
-<?php else: ?>
-    <span class="text-muted">No area assigned</span>
-<?php endif; ?>
-</p>
-    
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-body">
+                                <form id="attendanceForm" class="row g-3 align-items-end">
+                                    <div class="col-md-8 mx-auto">
 
-    <p class="mb-1">
-    📅 <?= date('F d, Y'); ?>
-    </p>
+                                            <?php if (!$isPersonnel): ?>
 
-    <p class="mb-1">
-🕘 Shift:
-<?php if ($shiftName): ?>
-    <span class="badge bg-info text-dark">
-        <?= htmlspecialchars($shiftName); ?>
-    </span>
-    (<?= date('h:i A', strtotime($shiftStart)); ?> - 
-     <?= date('h:i A', strtotime($shiftEnd)); ?>)
-<?php else: ?>
-    <span class="text-muted">No schedule today</span>
-<?php endif; ?>
-</p>
+                                            <label class="form-label">Personnel</label>
+                                            <select name="user_id" class="form-select" required onchange="this.form.submit()">
+                                            <option value="">Select personnel...</option>
+
+                                            <?php foreach ($personnelList as $person): ?>
+                                            <option value="<?= (int) $person['id']; ?>"
+                                                <?= ($person['id'] == $userId) ? 'selected' : ''; ?>>
+                                            <?= htmlspecialchars($person['fullname'], ENT_QUOTES, 'UTF-8'); ?>
+                                            </option>
+                                            <?php endforeach; ?>
+
+                                            </select>
+
+                                            <?php else: ?>
+
+                                            <input type="hidden" name="user_id" value="<?= (int) $_SESSION['personnel_id']; ?>">
+
+                                            <label class="form-label">Personnel</label>
+                                            <div class="border rounded p-3 bg-light">
+
+                                                <h5 class="mb-2">
+                                                    👤 <?= htmlspecialchars($displayName); ?>
+                                                </h5>
+
+                
+                                                    <p class="mb-1">
+                                                📍 Area:
+                                                <?php if (!empty($areaName)): ?>
+                                                    <?php foreach (explode(',', $areaName) as $area): ?>
+                                                        <span class="badge bg-secondary me-1">
+                                                            <?= htmlspecialchars(trim($area)); ?>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                <?php else: ?>
+                                                    <span class="text-muted">No area assigned</span>
+                                                <?php endif; ?>
+                                                </p>
+                
+
+                                                <p class="mb-1">
+                                                📅 <?= date('F d, Y'); ?>
+                                                </p>
+
+                                                <p class="mb-1">
+                                            🕘 Shift:
+                                            <?php if ($shiftName): ?>
+                                                <span class="badge bg-info text-dark">
+                                                    <?= htmlspecialchars($shiftName); ?>
+                                                </span>
+                                                (<?= date('h:i A', strtotime($shiftStart)); ?> - 
+                                                <?= date('h:i A', strtotime($shiftEnd)); ?>)
+                                            <?php else: ?>
+                                                <span class="text-muted">No schedule today</span>
+                                            <?php endif; ?>
+                                            </p>
 
 
-    <p class="mb-1">
-    🕒 Current Time: 
-    <strong id="liveClock"></strong>
-    </p>
+                                            <p class="mb-1">
+                                            🕒 Current Time: 
+                                            <strong id="liveClock"></strong>
+                                            </p>
 
-    <p class="mb-1">
-        🕒 Status: 
-        <strong>
-                <?php
-                    $badge = "secondary";
+                                            <p class="mb-1">
+                                                🕒 Status: 
+                                                <strong>
+                                                        <?php
+                                                            $badge = "secondary";
 
-                    if ($statusToday == "Present") $badge = "success";
-                    elseif ($statusToday == "Late") $badge = "warning";
-                    elseif ($statusToday == "Completed") $badge = "primary";
-                    elseif ($statusToday == "Rest Day (Worked)") $badge = "dark";
-                    elseif ($statusToday == "No Schedule") $badge = "secondary";
-                    elseif ($statusToday == "Early") $badge = "info";
+                                                            if ($statusToday == "Present") $badge = "success";
+                                                            elseif (str_contains($statusToday, "Late")) $badge = "warning";
+                                                            elseif ($statusToday == "Completed") $badge = "primary";
+                                                            elseif ($statusToday == "Rest Day (Worked)") $badge = "dark";
+                                                            elseif ($statusToday == "No Schedule") $badge = "secondary";
+                                                            elseif ($statusToday == "Early") $badge = "info";
+                                                            ?>
+
+                                                            <span class="badge bg-<?= $badge ?>">
+                                                                <?= htmlspecialchars($statusToday); ?>
+                                                            </span>
+                                                </strong>
+                                            </p>
+
+                                                <?php if ($timeInToday): ?>
+                                                    <p class="mb-1">⏰ Time In: <?= date("h:i:s A", strtotime($timeInToday)); ?></p>
+                                                <?php endif; ?>
+
+                                                <?php if ($timeOutToday): ?>
+                                                    <p class="mb-0">🏁 Time Out: <?= date("h:i:s A", strtotime($timeOutToday)); ?></p>
+                                                <?php endif; ?>
+
+                                                    <?php if ($totalHours): ?>
+                                                    <p class="mb-0">🧮 Total Hours: <?= $totalHours; ?></p>
+                                                <?php endif; ?>
+
+                                                <?php if ($timeOutToday && !empty($undertime)): ?>
+                                                <p class="text-warning">⏳ Undertime: <?= $undertime; ?></p>
+                                            <?php endif; ?>
+
+                                                <?php if ($timeOutToday && !empty($overtime)): ?>
+                                                    <p class="text-success">🔥 Overtime: <?= $overtime; ?></p>
+                                                <?php endif; ?>
+
+                                                <hr>
+
+                                                <p>📊 Monthly Total Hours: 
+                                                    <strong><?= $monthlyHours; ?></strong>
+                                                </p>
+
+                                                <p>🔥 Monthly Overtime: 
+                                                    <strong><?= $monthlyOT; ?></strong>
+                                                </p>
+
+                                        </div>
+
+
+                                    <?php endif; ?>
+
+                                </div>
+                                    <div class="col-md-8 mx-auto d-flex justify-content-center gap-3 mt-3"> 
+                                        <button class="btn btn-success"
+                                        type="button"
+                                        id="timeInBtn"
+                                        title="<?= (!$shiftStart && $shiftName !== 'REST') ? 'No schedule today' : '' ?>"
+                                        <?= ($timeInToday || (!$shiftStart && $shiftName !== 'REST')) ? 'disabled' : ''; ?>>
+                                                Time In
+                                            </button>
+
+                                        <button class="btn btn-danger"
+                                                type="button"
+                                                id="timeOutBtn"
+                                                <?= (!$timeInToday || $timeOutToday) ? 'disabled' : ''; ?>>
+                                                Time Out
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                                        
+                                              
+
+                                    
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-body">
+
+        <h5 class="mb-3">📄 Monthly Attendance (DTR)</h5>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover text-center align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Date</th>
+                        <th>Time In</th>
+                        <th>Time Out</th>
+                        <th>Status</th>
+                        <th>Undertime</th>
+                        <th>Overtime</th>
+                    </tr>
+                </thead>
+                <tbody>
+
+                    <?php
+                    if ($userId > 0) {
+
+                        $dtrSql = "
+                            SELECT date, time_in, time_out, status, undertime, overtime
+                            FROM attendance
+                            WHERE personnel_id = ?
+                            AND MONTH(date) = MONTH(CURRENT_DATE())
+                            AND YEAR(date) = YEAR(CURRENT_DATE())
+                            ORDER BY date ASC
+                        ";
+
+                        $stmt = $conn->prepare($dtrSql);
+                        $stmt->bind_param("i", $userId);
+                        $stmt->execute();
+                        $result = $stmt->get_result();
+
+                        if ($result->num_rows > 0):
+                            while ($row = $result->fetch_assoc()):
                     ?>
 
-                    <span class="badge bg-<?= $badge ?>">
-                        <?= htmlspecialchars($statusToday); ?>
-                    </span>
-        </strong>
-    </p>
+                    <tr>
+                        <td><?= date("M d, Y", strtotime($row['date'])); ?></td>
+                        <td><?= $row['time_in'] ? date("h:i A", strtotime($row['time_in'])) : '-' ?></td>
+                        <td><?= $row['time_out'] ? date("h:i A", strtotime($row['time_out'])) : '-' ?></td>
+                        <td>
+                            <?php
+                                $badge = "secondary";
+                                if ($row['status'] == "On Time") $badge = "success";
+                                elseif (str_contains($row['status'], "Late")) $badge = "warning";
+                                elseif ($row['status'] == "Rest Day (Worked)") $badge = "dark";
+                            ?>
+                            <span class="badge bg-<?= $badge ?>">
+                                <?= htmlspecialchars($row['status']); ?>
+                            </span>
+                        </td>
+                        <td><?= $row['undertime'] ?? '-' ?></td>
+                        <td><?= $row['overtime'] ?? '-' ?></td>
+                    </tr>
 
-    <?php if ($timeInToday): ?>
-        <p class="mb-1">⏰ Time In: <?= date("h:i:s A", strtotime($timeInToday)); ?></p>
-    <?php endif; ?>
+                    <?php
+                            endwhile;
+                        else:
+                    ?>
+                    <tr>
+                        <td colspan="6" class="text-muted">No attendance records this month</td>
+                    </tr>
+                    <?php
+                        endif;
 
-    <?php if ($timeOutToday): ?>
-        <p class="mb-0">🏁 Time Out: <?= date("h:i:s A", strtotime($timeOutToday)); ?></p>
-    <?php endif; ?>
+                        $stmt->close();
+                    }
+                    ?>
 
-        <?php if ($totalHours): ?>
-        <p class="mb-0">🧮 Total Hours: <?= $totalHours; ?></p>
-    <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
 
-    <?php if ($timeOutToday && !empty($undertime)): ?>
-    <p class="text-warning">⏳ Undertime: <?= $undertime; ?></p>
-<?php endif; ?>
-
-    <?php if ($timeOutToday && !empty($overtime)): ?>
-        <p class="text-success">🔥 Overtime: <?= $overtime; ?></p>
-    <?php endif; ?>
-
-    <hr>
-
-    <p>📊 Monthly Total Hours: 
-        <strong><?= $monthlyHours; ?></strong>
-    </p>
-
-    <p>🔥 Monthly Overtime: 
-        <strong><?= $monthlyOT; ?></strong>
-    </p>
-
-</div>
-
-
-<?php endif; ?>
-
-</div>
-                        <div class="col-md-6 d-flex gap-2">   
-                            <button class="btn btn-success"
-                                    type="button"
-                                    id="timeInBtn"
-                                    <?= ($timeInToday) ? 'disabled' : ''; ?>>
-                                    Time In
-                                </button>
-
-                            <button class="btn btn-danger"
-                                    type="button"
-                                    id="timeOutBtn"
-                                    <?= (!$timeInToday || $timeOutToday) ? 'disabled' : ''; ?>>
-                                    Time Out
-                            </button>
                         </div>
-                    </form>
-                </div>
-            </div>
-        </main>
-    </div>
-</div>
+                    </div>
+          </main>
+</div>  <!-- row -->
+</div>  <!-- container -->
+
 <script src="<?= htmlspecialchars(app_url('assets/js/app.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
 
 <script>

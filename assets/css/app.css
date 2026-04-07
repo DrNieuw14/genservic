@@ -1,9 +1,6 @@
 /* ===== GenServis CvSU Theme ===== */
 
-body {
-    background-color: #f1f5f2;
-    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-}
+
 
 .app-layout {
     min-height: 100vh;
@@ -17,13 +14,29 @@ body {
 }
 
 .sidebar h5{
-    color:#FFC107; /* CvSU Gold */
+    color:#FFC107;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+.sidebar small {
+    font-size: 13px;
+    letter-spacing: 0.5px;
+}
+
+.sidebar .nav-link:hover {
+    transform: translateX(3px);
 }
 
 .sidebar .nav-link {
     color: rgba(255,255,255,0.9);
     border-radius: 0.4rem;
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.4rem;
+
+    font-size: 17px;          /* 🔥 BIGGER TEXT */
+    padding: 10px 14px;       /* 🔥 MORE SPACE */
+    font-weight: 500;
+
     transition: all 0.2s ease;
 }
 
@@ -239,3 +252,71 @@ table td, table th {
     padding: 3px !important;
 }
 
+/* ===== GLOBAL FONT SIZE IMPROVEMENT ===== */
+body {
+    background-color: #f1f5f2;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    font-size: 15px;
+}
+
+
+/* Sidebar */
+.sidebar {
+    font-size: 15px;
+}
+
+.sidebar .nav-link {
+    font-size: 15px;
+    padding: 8px 12px;
+}
+
+/* Headings */
+h1 { font-size: 26px; }
+h2 { font-size: 22px; }
+h3 { font-size: 20px; }
+h4 { font-size: 18px; }
+h5 { font-size: 17px; }
+
+/* Cards / Dashboard content */
+.card {
+    font-size: 15px;
+}
+
+/* Tables */
+.table {
+    font-size: 14px;
+}
+
+/* Buttons */
+.btn {
+    font-size: 14px;
+    padding: 6px 12px;
+}
+
+/* Form inputs */
+input, select {
+    font-size: 14px;
+}
+
+.card h5 {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+
+.card h2 {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.card p {
+    font-size: 17px;
+}
+
+.table td, .table th {
+    vertical-align: middle;
+}
+
+.card {
+    border-radius: 12px;
+}

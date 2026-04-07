@@ -151,7 +151,7 @@ $trendTotals = [];
                         <?php render_sidebar($_SESSION['role']); ?>
                         <main class="col-lg-10 col-md-9 p-4">
                                 <div class="d-flex justify-content-between align-items-center mb-3">
-                                    <h3 class="mb-0">Dashboard Overview</h3>
+                                    <h2 class="mb-0 fw-bold">Dashboard Overview</h2>
                                     <div class="text-end">
                                         <div>
                                             Logged in as:                             
@@ -169,8 +169,8 @@ $trendTotals = [];
                                 <div class="col-sm-6 col-xl-3">
                                     <div class="card summary-card border-0 shadow-sm">
                                         <div class="card-body p-4">
-                                            <p class="text-muted mb-1">Total Personnel</p>
-                                            <h2 class="mb-0"><?= $totalPersonnel; ?></h2>
+                                            <p class="text-muted mb-1 fs-6">Total Personnel</p>
+                                            <h1 class="mb-0 fw-bold"><?= $totalPersonnel; ?></h1>
                                         </div>
                                     </div>
                                 </div>

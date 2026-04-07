@@ -7,9 +7,9 @@ require_once '../config/database.php';
 if(!$is_pdf){
     require_once '../config/auth.php';
     require_once '../config/layout.php';
-    require_role(['admin','supervisor']);
-}else {
-    // ✅ VERY IMPORTANT
+    require_role(['personnel']);
+    
+} else {
     ob_clean();
 }
 ?>
@@ -23,16 +23,13 @@ if(!$is_pdf){
         <main class="col-lg-10 col-md-9 p-4">
 
             <?php render_topbar(); ?>
-
 <?php endif; ?>
 
 
 
- 
-
 
 <?php
-$personnel_id = $_GET['personnel_id'] ?? '';
+$personnel_id = $_SESSION['personnel_id'];
 $month = $_GET['month'] ?? date('Y-m');
 $personnel = ['fullname' => ''];
 
@@ -41,25 +38,8 @@ $personnel = ['fullname' => ''];
 <?php if(!$is_pdf): ?>
 <div class="card p-3 mb-3">
     <form method="GET" class="row">
-
-        <div class="col-md-4">
-            <label>Personnel</label>
-            <select name="personnel_id" class="form-control" required>
-                <option value="">Select Personnel</option>
-                <?php
-                $res = $conn->query("SELECT id, fullname FROM personnel ORDER BY fullname ASC");
-                
-                while($row = $res->fetch_assoc()):
-                ?>
-                <option value="<?= $row['id'] ?>" 
-                    <?= (($_GET['personnel_id'] ?? '') == $row['id']) ? 'selected' : '' ?>>
-                    <?= $row['fullname'] ?>
-                </option>
-                <?php endwhile; ?>
-            </select>
-        </div>
-
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+      
+          <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
         <div class="col-md-3">
             <label>Select Month</label>
@@ -88,8 +68,6 @@ $personnel = ['fullname' => ''];
     </form>
 </div>
 <?php endif; ?>
-
-
 
 <?php
 
@@ -325,9 +303,11 @@ if($schedule_result['start_time'] && $schedule_result['end_time']){
 <?php if($personnel_id && ($month || ($start_date && $end_date))): ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
 
-    <h4 class="mb-3 text-center">DTR Report</h4>
+    <h4 class="mb-0">DTR Report</h4>
 
-    
+    <?php if(!$is_pdf): ?>
+        
+    <?php endif; ?>
 
 </div>
 
@@ -457,7 +437,8 @@ if($schedule_result['start_time'] && $schedule_result['end_time']){
                 <?php
                 if($status === 'REST DAY'){
                     echo '-';
-                } elseif(empty($rowData['pm_out'])){
+                }
+                elseif(empty($rowData['pm_out'])){
                     echo '<span class="text-danger">-</span>';
                 } else {
                     echo date('h:i A', strtotime($rowData['pm_out']));
@@ -552,6 +533,9 @@ if($schedule_result['start_time'] && $schedule_result['end_time']){
 </a>
 <?php endif; ?>
 
+<?php endif; ?>
+
+<?php if(!$is_pdf): ?>
         </main>
     </div>
 </div>
@@ -597,7 +581,7 @@ body {
     font-family: Arial, sans-serif;
 }
 
-/* ✅ SCREEN VIEW */
+/* ✅ SCREEN (normal UI) */
 @media screen {
     body {
         font-size: 14px;
@@ -608,7 +592,7 @@ body {
     }
 }
 
-/* ✅ PDF / PRINT VIEW */
+/* ✅ PDF / PRINT (compact) */
 @media print {
     body {
         font-size: 10px;
@@ -616,12 +600,6 @@ body {
 
     .table {
         font-size: 9px;
-    }
-}
-
-@media screen {
-    input, select, button {
-        font-size: 14px !important;
     }
 }
 
@@ -659,8 +637,4 @@ table {
     table-layout: fixed;
 }
 
-
-.table {
-    font-size: 9px;
-}
 </style>

@@ -21,7 +21,7 @@ require_once __DIR__ . '/database.php';
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
 
     <!-- YOUR CSS -->
-    <link rel="stylesheet" href="<?= app_url('assets/css/app.css'); ?>">
+    <link rel="stylesheet" href="<?= app_url('assets/css/app.css?v=2'); ?>">
 </head>
 <body>
 <?php
@@ -35,9 +35,23 @@ function render_topbar(): void
 
     $fullname = $_SESSION['fullname'] ?? 'Unknown';
     $role = $_SESSION['role'] ?? 'user';
-    $today = date('Y-m-d'); // ← matches your exact format
+    $today = date('Y-m-d');
+
+    // detect PDF mode safely
+    $is_pdf = isset($_GET['pdf']);
 ?>
-    <div class="d-flex justify-content-end mb-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+
+        <!-- LEFT SIDE: Back button -->
+       <div>
+            <?php if(!$is_pdf): ?>
+                <a href="<?= app_url('dashboard.php'); ?>" class="btn btn-secondary btn-sm">
+                    ⬅ Back to Dashboard
+                </a>
+            <?php endif; ?>
+        </div>
+
+        <!-- RIGHT SIDE: user info -->
         <div class="text-end">
             <div>
                 <strong>Logged in as:</strong> <?= htmlspecialchars($fullname) ?> (<?= htmlspecialchars($role) ?>)
@@ -46,6 +60,7 @@ function render_topbar(): void
                 <strong>Today:</strong> <?= $today ?>
             </div>
         </div>
+
     </div>
 <?php
 }
@@ -153,11 +168,23 @@ if ($conn instanceof mysqli) {
                         Attendance Reports
                     </a>
 
-                    <!--DTR REports -->
-                    <a class="nav-link mb-1 <?= $currentPage == 'dtr_report.php' ? 'active' : '' ?>"
-                        href="<?= app_url('reports/dtr_report.php'); ?>">
-                        <i class="bi bi-calendar-check"></i> DTR Reports
-                    </a>
+                    <!-- DTR REPORTS -->
+
+                    <?php if ($role === 'personnel'): ?>
+
+                        <a class="nav-link mb-1 <?= $currentPage == 'personnel_dtr.php' ? 'active' : '' ?>"
+                            href="<?= app_url('reports/personnel_dtr.php'); ?>">
+                            <i class="bi bi-calendar-check"></i> My DTR
+                        </a>
+
+                    <?php else: ?>
+
+                        <a class="nav-link mb-1 <?= $currentPage == 'dtr_report.php' ? 'active' : '' ?>"
+                            href="<?= app_url('reports/dtr_report.php'); ?>">
+                            <i class="bi bi-calendar-check"></i> DTR Reports
+                        </a>
+
+                    <?php endif; ?>
 
                 <?php if ($role === 'admin'): ?>
                     
