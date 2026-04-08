@@ -15,16 +15,21 @@
     $cto_query = "
     SELECT 
         SUM(equivalent_days) AS total_days,
+        SUM(used_hours) AS used_hours,
         SEC_TO_TIME(SUM(TIME_TO_SEC(total_hours))) AS total_hours
-        FROM cto_summary
-        WHERE personnel_id = '$personnel_id' AND status='Approved'
+    FROM cto_summary
+    WHERE personnel_id = '$personnel_id' AND status='Approved'
     ";
 
     $cto_result = mysqli_query($conn, $cto_query);
     $cto = mysqli_fetch_assoc($cto_result);
 
     $total_days = isset($cto['total_days']) ? (float)$cto['total_days'] : 0;
+    $used_hours = $cto['used_hours'] ?? 0;
     $total_hours = $cto['total_hours'] ?? '00:00:00';
+
+    $balance_days = max(0, $total_days - ($used_hours / 8));
+   
 ?>
 
 <!DOCTYPE html>
@@ -39,46 +44,57 @@
             <h2>Leave Request System</h2>
 
             <!-- CTO DISPLAY -->
-            <div class="alert alert-info">
-                <strong>Available CTO:</strong><br>
-                Days: <?= number_format($total_days,2) ?> <br>
-                Hours: <?= $total_hours ?>
+            <?php if($_SESSION['role'] == 'personnel'): ?>
 
-                <p class="mt-2">
-                    <small class="text-muted">
-                        1 day = 8 hours
-                    </small>
-                </p>
-            </div>
+                <div class="alert alert-info">
+                    <strong>CTO Summary:</strong><br>
+                    Earned: <?= number_format($total_days,2) ?> days<br>
+                    Used: <?= number_format($used_hours / 8,2) ?> days<br>
+                    <strong>Balance: <?= number_format($balance_days,2) ?> days</strong><br>
+                    Hours Earned: <?= $total_hours ?>
+                </div>
 
+            <?php endif; ?>
 
-            <form method="POST" class="mb-4">
-                <?php if($_SESSION['role'] == 'supervisor'): ?>
-                <label>Select Personnel</label>
-                <select name="personnel_id" class="form-control mb-2">
-                    <?php
-                        $query = "SELECT * FROM personnel";
-                        $result = mysqli_query($conn,$query);
-                        while($row = mysqli_fetch_assoc($result)){
-                        echo "<option value='".$row['id']."'>".$row['fullname']."</option>";
-                        }
-                    ?>
-                </select>
+            <?php if($_SESSION['role'] == 'personnel'): ?>
 
-                <?php else: ?>
-                <input type="hidden" name="personnel_id" value="<?= $personnel_id ?>">
-                <?php endif; ?>
+                <form method="POST" class="mb-4">
 
-                <input type="number" step="0.5" name="requested_days" placeholder="Requested Days (e.g. 0.5, 1, 1.5)" class="form-control mb-2" required>
-                <textarea name="reason" placeholder="Reason for leave" class="form-control mb-2" required></textarea>
-                <button name="submit_leave" class="btn btn-primary">Submit Leave Request</button>
+                    <input type="hidden" name="personnel_id" value="<?= $personnel_id ?>">
+                                        <input type="number" step="0.5" name="requested_days" placeholder="Requested Days (e.g. 0.5, 1, 1.5)" class="form-control mb-2" required>
+                    <textarea name="reason" placeholder="Reason for leave" class="form-control mb-2" required></textarea>
+                    <button name="submit_leave" class="btn btn-primary">Submit Leave Request</button>
+                
+                </form>
 
-            </form>
+            <?php endif; ?>
+
+            <?php if($_SESSION['role'] == 'supervisor'): ?>
+                <div class="alert alert-secondary">
+                    You can review and approve leave requests below.
+                </div>
+            <?php endif; ?>
+
+            <ul class="nav nav-tabs mb-3">
+                <li class="nav-item">
+                    <a class="nav-link <?= (!isset($_GET['status'])) ? 'active' : '' ?>" href="leave.php">All</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= ($_GET['status'] ?? '') == 'Pending' ? 'active' : '' ?>" href="?status=Pending">Pending</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= ($_GET['status'] ?? '') == 'Approved' ? 'active' : '' ?>" href="?status=Approved">Approved</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link <?= ($_GET['status'] ?? '') == 'Rejected' ? 'active' : '' ?>" href="?status=Rejected">Rejected</a>
+                </li>
+            </ul>
 
             <h4>Leave Records</h4>
-            <table class="table table-bordered">
+            <table class="table table-bordered table-hover shadow">
+            
 
-                <tr>
+                <tr class="table-dark">
                 <th>ID</th>
                 <th>Personnel</th>
                 <th>Days</th>
@@ -88,21 +104,41 @@
                 </tr>
 
                 <?php
+                    $status_filter = $_GET['status'] ?? '';
+                    $where = "";
+
                     if($_SESSION['role'] == 'personnel'){
-                        $query = "SELECT leave_requests.*, personnel.fullname
-                        FROM leave_requests
-                        JOIN personnel ON leave_requests.personnel_id = personnel.id
-                        WHERE leave_requests.personnel_id = '$personnel_id'";
-                    }else{
-                        $query = "SELECT leave_requests.*, personnel.fullname
-                        FROM leave_requests
-                        JOIN personnel ON leave_requests.personnel_id = personnel.id";
-                        }
+                        $where .= "leave_requests.personnel_id = '$personnel_id'";
+                    }
+
+                    if($status_filter != ''){
+                        if($where != '') $where .= " AND ";
+                        $where .= "leave_requests.status = '$status_filter'";
+                    }
+
+                    if($where != ''){
+                        $where = "WHERE " . $where;
+                    }
+
+                    $query = "
+                    SELECT leave_requests.*, personnel.fullname
+                    FROM leave_requests
+                    JOIN personnel ON leave_requests.personnel_id = personnel.id
+                    $where
+                    ORDER BY leave_requests.created_at DESC
+                    ";
 
                         $result = mysqli_query($conn,$query);
+                        if(mysqli_num_rows($result) == 0){
+                            echo "<tr><td colspan='6' class='text-center text-muted'>No records found</td></tr>";
+                        }
 
                         while($row = mysqli_fetch_assoc($result)){
-                            $rowClass = ($row['status'] == 'Pending') ? 'table-warning' : '';
+                            $rowClass = '';
+                            if($row['status'] == 'Pending') $rowClass = 'table-warning';
+                            elseif($row['status'] == 'Approved') $rowClass = 'table-success';
+                            elseif($row['status'] == 'Rejected') $rowClass = 'table-danger';
+
                             echo "<tr class='$rowClass'>";
                                 echo "<td>".$row['id']."</td>";
                                 echo "<td>".$row['fullname']."</td>";
@@ -149,14 +185,18 @@
 
         // CHECK CTO BALANCE
         $check = "
-        SELECT SUM(equivalent_days) AS total_days
+        SELECT 
+        SUM(equivalent_days) AS total_days,
+        SUM(used_hours)/8 AS used_days
         FROM cto_summary
         WHERE personnel_id='$personnel_id' AND status='Approved'
         ";
 
         $res = mysqli_query($conn,$check);
         $data = mysqli_fetch_assoc($res);
-        $available = $data['total_days'] ?? 0;
+        $total = $data['total_days'] ?? 0;
+        $used = $data['used_days'] ?? 0;
+        $available = $total - $used;
 
         if($requested_days > $available){
             echo "<div class='alert alert-danger'>Not enough CTO balance</div>";

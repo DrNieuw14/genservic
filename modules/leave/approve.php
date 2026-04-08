@@ -1,31 +1,60 @@
 <?php
-include("../../config/database.php");
+session_start();
+
+require_once __DIR__ . '/../../config/database.php';
+include(__DIR__ . "/../../config/audit.php");
 
 $id = $_GET['id'];
+$approver = $_SESSION['user_id'] ?? 0;
 
-// GET REQUEST DETAILS
+
+// ===== GET REQUEST DETAILS =====
 $get = mysqli_query($conn, "SELECT * FROM leave_requests WHERE id='$id'");
 $data = mysqli_fetch_assoc($get);
 
 $personnel_id = $data['personnel_id'];
 $requested_days = $data['requested_days'];
 
-// APPROVE REQUEST
-mysqli_query($conn, "UPDATE leave_requests SET status='Approved' WHERE id='$id'");
+// Convert to hours
+$hours_to_deduct = $requested_days * 8;
 
-// DEDUCT CTO
-mysqli_query($conn, "
-UPDATE cto_summary 
-SET equivalent_days = equivalent_days - $requested_days
-WHERE personnel_id = '$personnel_id' 
-AND status='Approved'
-LIMIT 1
+// ===== CHECK AVAILABLE CTO =====
+$check = mysqli_query($conn, "
+    SELECT 
+        SUM(equivalent_days) AS total_days,
+        SUM(used_hours)/8 AS used_days
+    FROM cto_summary
+    WHERE personnel_id = '$personnel_id'
 ");
 
-header("Location: leave.php");
+$cto = mysqli_fetch_assoc($check);
 
+$total_days = $cto['total_days'] ?? 0;
+$used_days = $cto['used_days'] ?? 0;
+$available_days = $total_days - $used_days;
+
+// ===== VALIDATION =====
 if($requested_days > $available_days){
-    die("Invalid request");
+    die("Not enough CTO balance");
 }
 
+// ===== APPROVE REQUEST =====
+mysqli_query($conn, "
+    UPDATE leave_requests 
+    SET status='Approved', approved_by='$approver', approved_at=NOW()
+    WHERE id='$id'
+");
+
+logAction($conn, $approver, "Approved leave ID: $id", "Leave");
+
+// ===== DEDUCT CTO (SAFE WAY) =====
+mysqli_query($conn, "
+    UPDATE cto_summary
+    SET used_hours = used_hours + $hours_to_deduct
+    WHERE personnel_id = '$personnel_id'
+");
+
+// ===== REDIRECT =====
+header("Location: leave.php");
+exit();
 ?>

@@ -22,7 +22,7 @@
                 <link rel="stylesheet" href="<?= app_url('assets/css/app.css?v=2'); ?>">
             </head>
 
-        <body>
+                <body>
                     <?php
                         /* =========================
                         TOPBAR (MOVE HERE ✅)
@@ -65,8 +65,8 @@
                         function render_footer(): void
                         {
                     ?>
-        </body>
-    </html>
+             </body>
+        </html>
 
 <?php
     }
@@ -142,49 +142,43 @@
 
                 <?php endif; ?>
 
-                <!-- REPORTS MAIN -->
-                    <small class="text-uppercase fw-bold text-light mt-3 d-block">📊 Reports</small>
+                
+                    <!-- LEAVE MANAGEMENT -->
+                    <small class="text-uppercase fw-bold text-light mt-3 d-block">📝 Leave Management</small>
 
                     <?php if ($role === 'personnel' || $role === 'supervisor'): ?>
                         <a class="nav-link mb-1 <?= $currentPage == 'leave.php' ? 'active' : '' ?>" 
-                           href="<?= app_url('modules/leave/leave.php'); ?>">
-                            📄 Leave Request
+                        href="<?= app_url('modules/leave/leave.php'); ?>">
+                            <i class="bi bi-file-earmark-text"></i> Leave Request
                         </a>
                     <?php endif; ?>
-
-                    <a class="nav-link mb-1" href="<?= app_url('modules/leave/cto_dashboard.php'); ?>">
-                        📊 CTO Dashboard
-                    </a>
 
                     <?php if ($role === 'supervisor'): ?>
                         <a class="nav-link mb-1" href="<?= app_url('modules/leave/cto_leaderboard.php'); ?>">
                             🏆 CTO Leaderboard
                         </a>
                     <?php endif; ?>
-                    
-                        <a class="nav-link mb-1" href="<?= app_url('reports/index.php'); ?>">
-                            Inventory Reports
-                        </a>
 
-                        <a class="nav-link mb-1" href="<?= app_url('reports/attendance_report.php'); ?>">
-                            Attendance Reports
-                        </a>
+                    <!-- ATTENDANCE REPORTS -->
+                    <small class="text-uppercase fw-bold text-light mt-3 d-block">⏱ Attendance</small>
 
-                    <!-- DTR REPORTS -->
+                    <a class="nav-link mb-1" href="<?= app_url('reports/attendance_report.php'); ?>">
+                        <i class="bi bi-graph-up"></i> Attendance Reports
+                    </a>
 
                     <?php if ($role === 'personnel'): ?>
-
                         <a class="nav-link mb-1 <?= $currentPage == 'personnel_dtr.php' ? 'active' : '' ?>"
                             href="<?= app_url('reports/personnel_dtr.php'); ?>">
-                            <i class="bi bi-calendar-check"></i> My DTR
+                            📅 My DTR
                         </a>
-
                     <?php else: ?>
                         <a class="nav-link mb-1 <?= $currentPage == 'dtr_report.php' ? 'active' : '' ?>"
                             href="<?= app_url('reports/dtr_report.php'); ?>">
-                            <i class="bi bi-calendar-check"></i> DTR Reports
+                            📅 DTR Reports
                         </a>
                     <?php endif; ?>
+
+                                                 
 
                 <?php if ($role === 'admin'): ?>
                     <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/personnel/personnel.php'), ENT_QUOTES, 'UTF-8'); ?>">Personnel Masterlist</a>
@@ -221,7 +215,15 @@
                     <a class="nav-link mb-1 <?= $currentPage == 'logs.php' ? 'active' : '' ?>" href="<?= htmlspecialchars(app_url('modules/inventory/logs.php')); ?>">
                         <i class="bi bi-clock-history"></i> Logs
                     </a>
+
+                    <!-- INVENTORY REPORTS -->
+                    <a class="nav-link mb-1" href="<?= app_url('reports/index.php'); ?>">
+                        <i class="bi bi-box"></i> Inventory Reports
+                    </a>
+
                 <?php endif; ?>
+
+                
 
                 <?php if ($role === 'personnel'): ?>
                     <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/inventory/request.php'), ENT_QUOTES, 'UTF-8'); ?>">
@@ -231,18 +233,20 @@
                 <?php endif; ?>
 
                 <small class="text-uppercase fw-bold text-light mt-3 d-block">⚙️ Management</small>
-                <!-- ACCOUNT APPROVAL (MOVED HERE) -->
+
                 <?php if ($role === 'supervisor' || $role === 'admin'): ?>
-                    
-                    <a class="nav-link" href="<?= htmlspecialchars(app_url('modules/users/approval.php'), ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <a class="nav-link" href="<?= app_url('modules/users/approval.php'); ?>">
                         👤 Account Approval
                         <?php if($pendingCount > 0): ?>
-                            <span class="badge bg-danger ms-2">
-                                <?= $pendingCount ?>
-                            </span>
+                            <span class="badge bg-danger ms-2"><?= $pendingCount ?></span>
                         <?php endif; ?>
                     </a>
-                    
+
+                    <a class="nav-link mb-1" href="<?= app_url('modules/audit/audit_logs.php'); ?>">
+                        📋 Audit Logs
+                    </a>
+
                 <?php endif; ?>
 
                 <hr class="text-light">

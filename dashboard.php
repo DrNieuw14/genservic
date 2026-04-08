@@ -2,7 +2,7 @@
     require_once __DIR__ . '/config/database.php';
     require_once __DIR__ . '/config/auth.php';
     require_once __DIR__ . '/config/layout.php';
-
+    
     require_login();
 
     // ======================
@@ -241,15 +241,19 @@
 
     // CTO BALANCE
     $cto_data = $conn->query("
-        SELECT 
-        SUM(equivalent_days) AS total_days,
-        SEC_TO_TIME(SUM(TIME_TO_SEC(total_hours))) AS total_hours
-        FROM cto_summary
-        WHERE personnel_id='$personnel_id' AND status='Approved'
+    SELECT 
+    SUM(equivalent_days) AS total_days,
+    SUM(used_hours) AS used_hours,
+    SEC_TO_TIME(SUM(TIME_TO_SEC(total_hours))) AS total_hours
+    FROM cto_summary
+    WHERE personnel_id='$personnel_id' AND status='Approved'
     ")->fetch_assoc();
 
-    $cto_days = $cto_data['total_days'] ?? 0;
+    $total_days = $cto_data['total_days'] ?? 0;
+    $used_hours = $cto_data['used_hours'] ?? 0;
     $cto_hours = $cto_data['total_hours'] ?? '00:00:00';
+
+    $cto_days = max(0, $total_days - ($used_hours / 8)); // ✅ BALANCE
 
     // PENDING REQUESTS
     $cto_pending = $conn->query("
@@ -294,11 +298,20 @@
                                         <div>
                                             Logged in as:                             
                                             <strong><?= htmlspecialchars($userFullName, ENT_QUOTES, 'UTF-8'); ?></strong>
-                                                (<?= htmlspecialchars($_SESSION['role'], ENT_QUOTES, 'UTF-8'); ?>)
+                                            (<?= htmlspecialchars($_SESSION['role'], ENT_QUOTES, 'UTF-8'); ?>)
                                         </div>
-                                            <span class="text-muted">
-                                                Today: <?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8'); ?>
-                                            </span>
+
+                                        <span class="text-muted">
+                                            Today: <?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8'); ?>
+                                        </span>
+
+                                        <!--<?php if($_SESSION['role'] == 'supervisor'): ?>
+                                            <div class="mt-2">
+                                                <a href="modules/audit/audit_logs.php" class="btn btn-dark btn-sm">
+                                                    📋 Audit Logs
+                                                </a>
+                                            </div>
+                                        <?php endif; ?> -->
                                     </div>
                                 </div>
                     
@@ -362,8 +375,11 @@
                                 <div class="card border-0 shadow-sm bg-success text-white">
                                     <div class="card-body p-4">
                                         <p class="mb-1">📅 CTO Credits</p>
-                                        <h2><?= number_format($cto_days,2) ?> days</h2>
-                                        <small><?= $cto_hours ?> hrs</small>
+                                        <h5>Balance: <?= number_format($cto_days,2) ?> days</h5>
+                                        <small>
+                                            Earned: <?= number_format($total_days,2) ?> |
+                                            Used: <?= number_format($used_hours / 8,2) ?>
+                                        </small>
                                     </div>
                                 </div>
                             </div>
@@ -445,6 +461,20 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!--<?php if($_SESSION['role'] == 'supervisor'): ?>
+                                <div class="col-sm-6 col-xl-3">
+                                    <div class="card border-0 shadow-sm bg-dark text-white">
+                                        <div class="card-body p-4">
+                                            <p class="mb-1">📋 Audit Trail</p>
+                                            <h5>System Logs</h5>
+                                            <a href="modules/audit/audit_logs.php" class="btn btn-light btn-sm mt-2">
+                                                View Logs
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <?php endif; ?> -->
 
                             <div class="col-sm-6 col-xl-3">
                                 <div class="card border-0 shadow-sm bg-success text-white">
