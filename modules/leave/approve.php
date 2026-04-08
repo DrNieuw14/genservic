@@ -3,10 +3,10 @@ session_start();
 
 require_once __DIR__ . '/../../config/database.php';
 include(__DIR__ . "/../../config/audit.php");
+include(__DIR__ . "/../../includes/notifications.php");
 
 $id = $_GET['id'];
 $approver = $_SESSION['user_id'] ?? 0;
-
 
 // ===== GET REQUEST DETAILS =====
 $get = mysqli_query($conn, "SELECT * FROM leave_requests WHERE id='$id'");
@@ -47,14 +47,33 @@ mysqli_query($conn, "
 
 logAction($conn, $approver, "Approved leave ID: $id", "Leave");
 
-// ===== DEDUCT CTO (SAFE WAY) =====
+// ===== DEDUCT CTO =====
 mysqli_query($conn, "
     UPDATE cto_summary
     SET used_hours = used_hours + $hours_to_deduct
     WHERE personnel_id = '$personnel_id'
 ");
 
-// ===== REDIRECT =====
+// ===== GET USER ID =====
+$query = mysqli_query($conn, "
+    SELECT id FROM users 
+    WHERE personnel_id = '$personnel_id'
+    LIMIT 1
+");
+
+$user = mysqli_fetch_assoc($query);
+$user_id = $user['id'] ?? 0;
+
+// ===== CREATE NOTIFICATION =====
+if($user_id){
+    createNotification(
+        $conn,
+        $user_id,
+        "Your leave request has been APPROVED",
+        "leave"
+    );
+}
+
+// ✅ VERY IMPORTANT — NO OUTPUT BEFORE THIS
 header("Location: leave.php");
 exit();
-?>

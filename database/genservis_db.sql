@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1:3307
--- Generation Time: Mar 30, 2026 at 11:17 AM
+-- Generation Time: Apr 08, 2026 at 08:14 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -73,32 +73,70 @@ CREATE TABLE `attendance` (
   `undertime` time DEFAULT NULL,
   `status` varchar(20) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `overtime` time DEFAULT NULL
+  `overtime` time DEFAULT NULL,
+  `extra_hours` time DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `attendance`
 --
 
-INSERT INTO `attendance` (`id`, `personnel_id`, `date`, `time_in`, `time_out`, `undertime`, `status`, `created_at`, `overtime`) VALUES
-(1, 2, '2026-03-14', '01:03:59', '01:45:12', '15:14:48', 'Present', '2026-03-14 00:03:59', NULL),
-(2, 1, '2026-03-14', '01:13:14', '01:24:23', NULL, 'Present', '2026-03-14 00:13:14', NULL),
-(3, 1, '2026-03-18', '03:10:14', '03:10:19', '13:49:41', 'Present', '2026-03-18 02:10:14', NULL),
-(4, 2, '2026-03-18', '04:20:31', '04:20:39', '12:39:21', 'Present', '2026-03-18 03:20:31', NULL),
-(5, 5, '2026-03-18', '06:18:03', '06:18:06', '10:41:54', 'Present', '2026-03-18 05:18:03', NULL),
-(6, 6, '2026-03-18', '07:25:38', NULL, NULL, 'Present', '2026-03-18 06:25:38', NULL),
-(7, 7, '2026-03-18', '07:49:46', '09:16:42', '09:43:18', 'Present', '2026-03-18 06:49:46', NULL),
-(8, 8, '2026-03-18', '09:28:51', '09:29:28', '05:30:32', 'Late', '2026-03-18 08:28:51', NULL),
-(9, 10, '2026-03-18', '09:55:31', '10:03:02', '08:56:58', 'Early', '2026-03-18 08:55:31', NULL),
-(10, 11, '2026-03-18', '10:12:49', '17:15:58', '01:44:02', 'Late', '2026-03-18 09:12:49', NULL),
-(11, 12, '2026-03-18', '17:19:27', '17:19:37', '01:40:23', 'Late', '2026-03-18 09:19:27', NULL),
-(12, 12, '2026-03-19', '09:09:34', '09:14:39', '09:45:21', 'Early', '2026-03-19 01:09:34', NULL),
-(13, 13, '2026-03-19', '14:01:26', '14:01:31', '00:58:29', 'Late', '2026-03-19 06:01:26', NULL),
-(14, 15, '2026-03-19', '15:02:07', '15:12:32', NULL, 'Late', '2026-03-19 07:02:07', '00:12:32'),
-(15, 19, '2026-03-19', '15:29:48', NULL, NULL, 'Late', '2026-03-19 07:29:48', NULL),
-(16, 20, '2026-03-23', '08:18:34', NULL, NULL, 'Late', '2026-03-23 00:18:34', NULL),
-(17, 21, '2026-03-23', '13:10:23', NULL, NULL, 'Late', '2026-03-23 05:10:23', NULL),
-(18, 11, '2026-03-23', '13:11:58', '13:13:06', '05:46:54', 'No Schedule', '2026-03-23 05:11:58', NULL);
+INSERT INTO `attendance` (`id`, `personnel_id`, `date`, `time_in`, `time_out`, `undertime`, `status`, `created_at`, `overtime`, `extra_hours`) VALUES
+(101, 22, '2026-04-08', '06:00:00', '18:00:00', NULL, NULL, '2026-04-08 00:10:08', NULL, '04:00:00'),
+(102, 21, '2026-04-08', NULL, NULL, NULL, 'Absent', '2026-04-08 05:46:53', NULL, NULL),
+(103, 21, '2026-04-01', NULL, NULL, NULL, 'Absent', '2026-04-08 05:46:53', NULL, NULL),
+(104, 21, '2026-04-02', NULL, NULL, NULL, 'Absent', '2026-04-08 05:46:53', NULL, NULL),
+(105, 21, '2026-04-03', NULL, NULL, NULL, 'Rest Day (No Work)', '2026-04-08 05:46:53', NULL, NULL),
+(106, 21, '2026-04-04', NULL, NULL, NULL, 'Absent', '2026-04-08 05:46:53', NULL, NULL),
+(107, 21, '2026-04-05', NULL, NULL, NULL, 'Rest Day (No Work)', '2026-04-08 05:46:53', NULL, NULL),
+(108, 21, '2026-04-06', NULL, NULL, NULL, 'Absent', '2026-04-08 05:46:53', NULL, NULL),
+(109, 21, '2026-04-07', NULL, NULL, NULL, 'Absent', '2026-04-08 05:46:53', NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `audit_logs`
+--
+
+CREATE TABLE `audit_logs` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `action` text DEFAULT NULL,
+  `module` varchar(50) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `audit_logs`
+--
+
+INSERT INTO `audit_logs` (`id`, `user_id`, `action`, `module`, `created_at`) VALUES
+(1, 5, 'Approved leave ID: 2', 'Leave', '2026-04-08 02:45:23');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `cto_summary`
+--
+
+CREATE TABLE `cto_summary` (
+  `id` int(11) NOT NULL,
+  `personnel_id` int(11) DEFAULT NULL,
+  `total_hours` time DEFAULT NULL,
+  `equivalent_days` decimal(5,2) DEFAULT NULL,
+  `month` varchar(7) DEFAULT NULL,
+  `status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `used_hours` decimal(6,2) DEFAULT 0.00
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `cto_summary`
+--
+
+INSERT INTO `cto_summary` (`id`, `personnel_id`, `total_hours`, `equivalent_days`, `month`, `status`, `created_at`, `used_hours`) VALUES
+(1, 22, '08:00:00', 1.00, '2026-04', 'Approved', '2026-04-08 00:11:56', 8.00),
+(3, 21, '16:00:00', 2.00, '2026-04', 'Pending', '2026-04-08 01:46:38', 0.00);
 
 -- --------------------------------------------------------
 
@@ -270,8 +308,26 @@ INSERT INTO `inventory_units` (`id`, `unit_name`, `abbreviation`, `created_at`) 
 --
 -- Table structure for table `leave_requests`
 --
--- Error reading structure for table genservis_db.leave_requests: #1932 - Table &#039;genservis_db.leave_requests&#039; doesn&#039;t exist in engine
--- Error reading data for table genservis_db.leave_requests: #1064 - You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near &#039;FROM `genservis_db`.`leave_requests`&#039; at line 1
+
+CREATE TABLE `leave_requests` (
+  `id` int(11) NOT NULL,
+  `personnel_id` int(11) DEFAULT NULL,
+  `requested_days` decimal(5,2) DEFAULT NULL,
+  `equivalent_hours` time DEFAULT NULL,
+  `reason` text DEFAULT NULL,
+  `status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
+  `approved_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `approved_at` timestamp NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `leave_requests`
+--
+
+INSERT INTO `leave_requests` (`id`, `personnel_id`, `requested_days`, `equivalent_hours`, `reason`, `status`, `approved_by`, `created_at`, `approved_at`) VALUES
+(1, 22, 1.00, '08:00:00', 'bday', 'Approved', 5, '2026-04-08 02:32:28', '2026-04-08 02:42:35'),
+(2, 22, 1.00, '08:00:00', 'bday again', 'Approved', 5, '2026-04-08 02:43:28', '2026-04-08 02:45:23');
 
 -- --------------------------------------------------------
 
@@ -296,15 +352,8 @@ CREATE TABLE `personnel` (
 --
 
 INSERT INTO `personnel` (`id`, `employee_id`, `fullname`, `position`, `department`, `assigned_area`, `status`, `created_at`, `user_id`) VALUES
-(10, 'UTL010', 'Aileen Ai Last Ai', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-18 08:49:06', 16),
-(11, 'UTL011', 'arnold M Ar', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-18 09:11:44', 17),
-(12, 'UTL012', 'mak m last', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-18 09:18:43', 18),
-(13, 'UTL850', 'mak2 mak2 aw', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-19 02:20:08', 19),
-(15, 'UTL20260319746', 'Test R Ltest', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-19 06:42:27', 20),
-(17, 'UTL20260319755', 'Test3 M Ltest3', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-19 07:23:23', 21),
-(19, 'UTL20260319871', 'Test4 M Ltest4', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-19 07:28:07', 22),
-(20, 'UTL20260323816', 'Test5 M Lastt5', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-23 00:16:50', 23),
-(21, 'UTL20260323681', 'Test6 M Banan', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-23 05:09:02', 24);
+(21, 'UTL20260323681', 'Test6 M Banan', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-03-23 05:09:02', 24),
+(22, 'UTL20260408581', 'Aldrin B Justimbaste', 'Utility Staff', 'Maintenance', NULL, 'Active', '2026-04-08 00:01:23', 25);
 
 -- --------------------------------------------------------
 
@@ -323,18 +372,10 @@ CREATE TABLE `personnel_areas` (
 --
 
 INSERT INTO `personnel_areas` (`id`, `personnel_id`, `area_name`) VALUES
-(18, 10, '4th Floor'),
-(20, 11, 'Building A'),
-(21, 11, 'Building B'),
-(22, 11, 'Library'),
-(23, 12, 'Admin Office'),
-(24, 13, 'Admin Office'),
-(26, 15, 'Campus Ground'),
-(27, 19, 'Campus Ground'),
-(28, 19, 'Laboratory'),
-(29, 17, '4th Floor'),
-(31, 20, 'Laboratory'),
-(32, 21, 'Admin Office');
+(33, 22, '4th Floor'),
+(34, 22, 'Building A'),
+(35, 22, 'Building B'),
+(36, 21, 'Library');
 
 -- --------------------------------------------------------
 
@@ -405,7 +446,8 @@ INSERT INTO `users` (`id`, `first_name`, `middle_initial`, `last_name`, `fullnam
 (21, 'Test3', 'M', 'Ltest3', 'Test3 M Ltest3', '2000-05-26', 'Male', 'test3', '$2y$10$daNSuDJhTfk/d.inisuYbeuSGHNawHdb0/MSwbvTy.z8Vj84zaBIy', 'personnel', '2026-03-19 07:23:23', NULL, 'approved'),
 (22, 'Test4', 'M', 'Ltest4', 'Test4 M Ltest4', '2000-06-05', 'Male', 'test4', '$2y$10$GHBrlSkjaUkyuUPwkbikpuMsKJ3fil8qV/Mzd1sjbI9hb4sUz/6N6', 'personnel', '2026-03-19 07:28:07', NULL, 'approved'),
 (23, 'Test5', 'M', 'Lastt5', 'Test5 M Lastt5', '2000-06-15', 'Male', 'test5', '$2y$10$.lq7wvTshZfZUi/HFIxQu.kZR0md5txOugq.yXslPMre4gY85Jj7y', 'personnel', '2026-03-23 00:16:50', NULL, 'approved'),
-(24, 'Test6', 'M', 'Banan', 'Test6 M Banan', '1987-09-12', 'Male', 'test6', '$2y$10$zVM6rBMsi4ll1XRtd97uquCtcQv/UU/1y1gj3w2lyxl.k4H8YdvR2', 'personnel', '2026-03-23 05:09:02', NULL, 'approved');
+(24, 'Test6', 'M', 'Banan', 'Test6 M Banan', '1987-09-12', 'Male', 'test6', '$2y$10$zVM6rBMsi4ll1XRtd97uquCtcQv/UU/1y1gj3w2lyxl.k4H8YdvR2', 'personnel', '2026-03-23 05:09:02', NULL, 'approved'),
+(25, 'Aldrin', 'B', 'Justimbaste', 'Aldrin B Justimbaste', '1996-01-12', 'Male', 'aldrin', '$2y$10$ICU4ajCCPVHIzk33a//83.6FJfmysQKjgmINqsIVRf0rWHDmGu9H6', 'personnel', '2026-04-08 00:01:23', NULL, 'approved');
 
 -- --------------------------------------------------------
 
@@ -486,7 +528,60 @@ INSERT INTO `work_schedule` (`id`, `work_area`, `shift`, `schedule_date`, `time_
 (56, 'Building A, Building B, Library', '3rd Shift', '2026-03-24', '10:00:00', '19:00:00', 11),
 (57, 'Building A, Building B, Library', '3rd Shift', '2026-03-25', '10:00:00', '19:00:00', 11),
 (58, 'Building A, Building B, Library', '3rd Shift', '2026-03-26', '10:00:00', '19:00:00', 11),
-(59, 'Building A, Building B, Library', 'REST', '2026-03-27', NULL, NULL, 11);
+(59, 'Building A, Building B, Library', 'REST', '2026-03-27', NULL, NULL, 11),
+(60, 'Admin Office', 'Morning', '2026-03-31', '06:00:00', '15:00:00', 21),
+(61, 'Admin Office', 'Morning', '2026-04-01', '06:00:00', '15:00:00', 21),
+(62, 'Admin Office', 'Morning', '2026-04-02', '06:00:00', '15:00:00', 21),
+(63, 'Admin Office', 'REST', '2026-04-03', NULL, NULL, 21),
+(64, 'Admin Office', 'Morning', '2026-04-04', '06:00:00', '15:00:00', 21),
+(65, 'Admin Office', 'REST', '2026-04-05', NULL, NULL, 21),
+(66, 'Admin Office', 'Morning', '2026-04-06', '06:00:00', '15:00:00', 21),
+(67, 'Admin Office', 'Morning', '2026-04-07', '06:00:00', '15:00:00', 21),
+(68, 'Admin Office', 'Morning', '2026-04-08', '06:00:00', '15:00:00', 21),
+(69, 'Admin Office', 'Morning', '2026-04-09', '06:00:00', '15:00:00', 21),
+(70, 'Admin Office', 'REST', '2026-04-10', NULL, NULL, 21),
+(71, 'Admin Office', 'Morning', '2026-04-11', '06:00:00', '15:00:00', 21),
+(72, 'Admin Office', 'REST', '2026-04-12', NULL, NULL, 21),
+(73, 'Admin Office', 'Morning', '2026-04-13', '06:00:00', '15:00:00', 21),
+(74, 'Admin Office', 'Morning', '2026-04-14', '06:00:00', '15:00:00', 21),
+(75, 'Admin Office', 'Morning', '2026-04-15', '06:00:00', '15:00:00', 21),
+(76, 'Admin Office', 'Morning', '2026-04-16', '06:00:00', '15:00:00', 21),
+(77, 'Admin Office', 'REST', '2026-04-17', NULL, NULL, 21),
+(78, 'Admin Office', 'Morning', '2026-04-18', '06:00:00', '15:00:00', 21),
+(79, 'Admin Office', 'REST', '2026-04-19', NULL, NULL, 21),
+(80, 'Admin Office', 'Morning', '2026-04-20', '06:00:00', '15:00:00', 21),
+(81, 'Admin Office', 'Morning', '2026-04-21', '06:00:00', '15:00:00', 21),
+(82, 'Admin Office', 'Morning', '2026-04-22', '06:00:00', '15:00:00', 21),
+(83, 'Admin Office', 'Morning', '2026-04-23', '06:00:00', '15:00:00', 21),
+(84, 'Admin Office', 'REST', '2026-04-24', NULL, NULL, 21),
+(85, 'Admin Office', 'Morning', '2026-04-25', '06:00:00', '15:00:00', 21),
+(86, 'Admin Office', 'REST', '2026-04-26', NULL, NULL, 21),
+(87, 'Admin Office', 'Morning', '2026-04-27', '06:00:00', '15:00:00', 21),
+(88, 'Admin Office', 'Morning', '2026-04-28', '06:00:00', '15:00:00', 21),
+(89, 'Admin Office', 'Morning', '2026-04-29', '06:00:00', '15:00:00', 21),
+(90, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-07', '08:00:00', '17:00:00', 22),
+(91, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-08', '08:00:00', '17:00:00', 22),
+(92, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-09', '08:00:00', '17:00:00', 22),
+(93, 'Building B, Building A, 4th Floor', 'REST', '2026-04-10', NULL, NULL, 22),
+(94, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-11', '08:00:00', '17:00:00', 22),
+(95, 'Building B, Building A, 4th Floor', 'REST', '2026-04-12', NULL, NULL, 22),
+(96, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-13', '08:00:00', '17:00:00', 22),
+(97, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-14', '08:00:00', '17:00:00', 22),
+(98, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-15', '08:00:00', '17:00:00', 22),
+(99, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-16', '08:00:00', '17:00:00', 22),
+(100, 'Building B, Building A, 4th Floor', 'REST', '2026-04-17', NULL, NULL, 22),
+(101, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-18', '08:00:00', '17:00:00', 22),
+(102, 'Building B, Building A, 4th Floor', 'REST', '2026-04-19', NULL, NULL, 22),
+(103, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-20', '08:00:00', '17:00:00', 22),
+(104, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-21', '08:00:00', '17:00:00', 22),
+(105, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-22', '08:00:00', '17:00:00', 22),
+(106, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-23', '08:00:00', '17:00:00', 22),
+(107, 'Building B, Building A, 4th Floor', 'REST', '2026-04-24', NULL, NULL, 22),
+(108, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-25', '08:00:00', '17:00:00', 22),
+(109, 'Building B, Building A, 4th Floor', 'REST', '2026-04-26', NULL, NULL, 22),
+(110, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-27', '08:00:00', '17:00:00', 22),
+(111, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-28', '08:00:00', '17:00:00', 22),
+(112, 'Building B, Building A, 4th Floor', '2nd Shift', '2026-04-29', '08:00:00', '17:00:00', 22);
 
 --
 -- Indexes for dumped tables
@@ -509,6 +604,19 @@ ALTER TABLE `area_history`
 --
 ALTER TABLE `attendance`
   ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `audit_logs`
+--
+ALTER TABLE `audit_logs`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `cto_summary`
+--
+ALTER TABLE `cto_summary`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_cto` (`personnel_id`,`month`);
 
 --
 -- Indexes for table `inventory_categories`
@@ -549,6 +657,12 @@ ALTER TABLE `inventory_request_items`
 -- Indexes for table `inventory_units`
 --
 ALTER TABLE `inventory_units`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `leave_requests`
+--
+ALTER TABLE `leave_requests`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -610,7 +724,19 @@ ALTER TABLE `area_history`
 -- AUTO_INCREMENT for table `attendance`
 --
 ALTER TABLE `attendance`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=110;
+
+--
+-- AUTO_INCREMENT for table `audit_logs`
+--
+ALTER TABLE `audit_logs`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+
+--
+-- AUTO_INCREMENT for table `cto_summary`
+--
+ALTER TABLE `cto_summary`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `inventory_categories`
@@ -649,16 +775,22 @@ ALTER TABLE `inventory_units`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
+-- AUTO_INCREMENT for table `leave_requests`
+--
+ALTER TABLE `leave_requests`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `personnel`
 --
 ALTER TABLE `personnel`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- AUTO_INCREMENT for table `personnel_areas`
 --
 ALTER TABLE `personnel_areas`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=37;
 
 --
 -- AUTO_INCREMENT for table `personnel_weekly_schedule`
@@ -676,13 +808,13 @@ ALTER TABLE `schedules`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `work_schedule`
 --
 ALTER TABLE `work_schedule`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=113;
 
 --
 -- Constraints for dumped tables

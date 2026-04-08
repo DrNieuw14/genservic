@@ -7,6 +7,62 @@
     }
 
     include("../../config/database.php");
+    include("../../includes/notifications.php");
+
+    if(isset($_POST['submit_leave'])){
+        $personnel_id = intval($_POST['personnel_id']);
+        $requested_days = floatval($_POST['requested_days']);
+        $reason = mysqli_real_escape_string($conn, $_POST['reason']);
+
+        // Convert to hours
+        $total_seconds = $requested_days * 8 * 3600;
+        $equivalent_hours = gmdate("H:i:s", $total_seconds);
+
+        // CHECK CTO BALANCE
+        $check = "
+        SELECT 
+        SUM(equivalent_days) AS total_days,
+        SUM(used_hours)/8 AS used_days
+        FROM cto_summary
+        WHERE personnel_id='$personnel_id' AND status='Approved'
+        ";
+
+        $res = mysqli_query($conn,$check);
+        $data = mysqli_fetch_assoc($res);
+        $total = $data['total_days'] ?? 0;
+        $used = $data['used_days'] ?? 0;
+        $available = $total - $used;
+
+        if($requested_days > $available){
+            echo "<div class='alert alert-danger'>Not enough CTO balance</div>";
+            exit();
+        }
+
+        // INSERT
+        $query = "INSERT INTO leave_requests 
+        (personnel_id, requested_days, equivalent_hours, reason, status)
+        VALUES ('$personnel_id','$requested_days','$equivalent_hours','$reason','Pending')";
+
+        mysqli_query($conn,$query);
+
+        // ===== CREATE NOTIFICATION =====
+        $supervisors = mysqli_query($conn, "
+        SELECT id FROM users WHERE role = 'supervisor'
+        ");
+
+        while($sup = mysqli_fetch_assoc($supervisors)){
+            createNotification(
+                $conn,
+                $sup['id'],
+                "New leave request submitted",
+                "leave"
+            );
+        }
+        
+        // ===== REDIRECT =====
+        header("Location: leave.php");
+        exit();
+    }
 
     // ===== GET CURRENT USER =====
     $personnel_id = $_SESSION['personnel_id'] ?? 1;
@@ -173,43 +229,10 @@
 </html>
 
 <?php
+
+
+
+
     // ===== SUBMIT LOGIC =====
-    if(isset($_POST['submit_leave'])){
-        $personnel_id = intval($_POST['personnel_id']);
-        $requested_days = floatval($_POST['requested_days']);
-        $reason = mysqli_real_escape_string($conn, $_POST['reason']);
-
-        // Convert to hours
-        $total_seconds = $requested_days * 8 * 3600;
-        $equivalent_hours = gmdate("H:i:s", $total_seconds);
-
-        // CHECK CTO BALANCE
-        $check = "
-        SELECT 
-        SUM(equivalent_days) AS total_days,
-        SUM(used_hours)/8 AS used_days
-        FROM cto_summary
-        WHERE personnel_id='$personnel_id' AND status='Approved'
-        ";
-
-        $res = mysqli_query($conn,$check);
-        $data = mysqli_fetch_assoc($res);
-        $total = $data['total_days'] ?? 0;
-        $used = $data['used_days'] ?? 0;
-        $available = $total - $used;
-
-        if($requested_days > $available){
-            echo "<div class='alert alert-danger'>Not enough CTO balance</div>";
-            exit();
-        }
-
-        // INSERT
-        $query = "INSERT INTO leave_requests 
-        (personnel_id, requested_days, equivalent_hours, reason, status)
-        VALUES ('$personnel_id','$requested_days','$equivalent_hours','$reason','Pending')";
-
-        mysqli_query($conn,$query);
-
-        echo "<script>alert('Leave Request Submitted'); window.location='leave.php';</script>";
-    }
+    
 ?>

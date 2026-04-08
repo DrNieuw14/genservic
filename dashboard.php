@@ -275,6 +275,7 @@
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="<?= htmlspecialchars(app_url('assets/css/app.css'), ENT_QUOTES, 'UTF-8'); ?>">
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     </head>
 
     <body>
@@ -294,6 +295,21 @@
                                         </div>
                                     <?php endif; ?>
 
+                                    <div class="d-flex align-items-center gap-3">
+
+                                    <!-- 🔔 NOTIFICATION BELL -->
+                                    <div class="dropdown">
+                                        <button id="notifBtn" class="btn btn-light position-relative dropdown-toggle" data-bs-toggle="dropdown">
+                                            <i class="bi bi-bell"></i>
+                                            <span class="badge bg-danger position-absolute top-0 start-100 translate-middle" id="notif-count">0</span>
+                                        </button>
+
+                                        <ul class="dropdown-menu dropdown-menu-end" style="width:300px;" id="notif-list">
+                                            <li><span class="dropdown-item text-muted">No notifications</span></li>
+                                        </ul>
+                                    </div>
+
+                                    <!-- 👤 USER INFO -->
                                     <div class="text-end">
                                         <div>
                                             Logged in as:                             
@@ -304,7 +320,9 @@
                                         <span class="text-muted">
                                             Today: <?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8'); ?>
                                         </span>
+                                    </div>
 
+                                </div>
                                         <!--<?php if($_SESSION['role'] == 'supervisor'): ?>
                                             <div class="mt-2">
                                                 <a href="modules/audit/audit_logs.php" class="btn btn-dark btn-sm">
@@ -650,6 +668,83 @@
             
         
         <script src="<?= htmlspecialchars(app_url('assets/js/app.js'), ENT_QUOTES, 'UTF-8'); ?>"></script>
+            
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        
+            <script>
+                function loadNotifications(){
+                        fetch('modules/notifications/fetch_notifications.php')
+                        .then(response => response.json())
+                        .then(data => {
+
+                            let list = document.getElementById('notif-list');
+                            let count = document.getElementById('notif-count');
+
+                            if(!list || !count) return;
+
+                            list.innerHTML = '';
+                            let unread = data.filter(n => n.is_read == 0).length;
+                            count.innerText = unread > 0 ? unread : '';
+
+                            if(data.length === 0){
+                                list.innerHTML = '<li><span class="dropdown-item text-muted">No notifications</span></li>';
+                            } else {
+                                data.forEach(n => {
+
+                                    let boldClass = n.is_read == 0 ? "fw-bold bg-light" : "";
+
+                                    list.innerHTML += `
+                                        <li>
+                                            <button class="dropdown-item ${boldClass}" onclick="handleNotification(${n.id})">
+                                                ${n.message}<br>
+                                                <small class="text-muted">${n.created_at}</small>
+                                            </button>
+                                        </li>
+                                    `;
+                                });
+                            }
+
+                        })
+                        .catch(err => console.error("Notification Error:", err));
+                    }
+
+                    // load once
+                    loadNotifications();
+
+                    const notifBtn = document.getElementById('notifBtn');
+
+                    notifBtn.addEventListener('shown.bs.dropdown', () => {
+                        fetch('modules/notifications/mark_all_read.php', {
+                            method: 'POST'
+                        })
+                        .then(() => {
+                            loadNotifications();
+                        });
+                    });
+
+                    // auto refresh
+                    setInterval(loadNotifications, 10000);
+
+                    // handle click
+                    function handleNotification(id){
+                        fetch('modules/notifications/mark_as_read.php', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded'
+                            },
+                            body: 'id=' + id
+                        })
+                        .then(() => {
+                            loadNotifications();
+
+                            setTimeout(() => {
+                                window.location.href = 'modules/leave/leave.php';
+                            }, 200);
+                        });
+                    }
+            </script>
+
+
             <script>
                 new Chart(document.getElementById('trendChart'), {
                     type: 'line',
@@ -728,12 +823,9 @@
                             }
                         }
                     });
-
-                    
+                                       
             </script>
-
             
-        
-    </body>
+        </body>
 </html>
 
