@@ -3,8 +3,7 @@ include("../../config/database.php");
 
 $id = $_GET['id'];
 
-$query = "UPDATE leave_requests SET status='Rejected' WHERE id='$id'";
-mysqli_query($conn,$query);
+mysqli_query($conn, "UPDATE leave_requests SET status='Rejected' WHERE id='$id'");
 
 header("Location: leave.php");
 ?>
